@@ -4,6 +4,9 @@
   "remoteEnv": {
     "NODE_VERSION": "22.15"
   },
+  "mounts": [
+    "source=${localEnv:HOME}/Documents/GitHub/DAGent-t/apps/sample-app,target=/data/sample-app,type=bind,consistency=cached"
+  ],
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {}
