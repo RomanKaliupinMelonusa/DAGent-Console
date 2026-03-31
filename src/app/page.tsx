@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import LiveDag from "@/components/LiveDag";
 import ActiveAgentHealth from "@/components/ActiveAgentHealth";
 import DecisionTimeline from "@/components/DecisionTimeline";
+import ExecutiveSynthesis from "@/components/ExecutiveSynthesis";
 
 export default async function Home({
   searchParams,
@@ -41,6 +42,7 @@ export default async function Home({
               {/* Right column — The Narrative */}
               <div className="max-h-[800px] overflow-y-auto lg:border-l border-zinc-200 dark:border-zinc-800">
                 <DecisionTimeline slug={pipeline} />
+                <ExecutiveSynthesis slug={pipeline} />
               </div>
             </div>
           </Suspense>

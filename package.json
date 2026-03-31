@@ -10,6 +10,7 @@
     "test": "jest --verbose"
   },
   "dependencies": {
+    "@github/copilot-sdk": "^0.2.0",
     "@xyflow/react": "^12.10.2",
     "next": "16.2.1",
     "react": "19.2.4",

@@ -69,3 +69,26 @@ export async function getPipelineTelemetry(
 
     return { state, flightData, changes };
 }
+
+export const DEFAULT_SPEC = "Spec file not found. Assume standard feature implementation.";
+
+async function readTextFile(filePath: string, fallback: string): Promise<string> {
+    try {
+        return await fs.readFile(filePath, "utf-8");
+    } catch {
+        return fallback;
+    }
+}
+
+export async function getSpecMarkdown(slug: string): Promise<string> {
+    if (!SAFE_SLUG_RE.test(slug)) {
+        return DEFAULT_SPEC;
+    }
+
+    const basePath = path.join(
+        process.env.TARGET_APP_PATH ?? "",
+        "in-progress",
+    );
+
+    return readTextFile(path.join(basePath, `${slug}_SPEC.md`), DEFAULT_SPEC);
+}
