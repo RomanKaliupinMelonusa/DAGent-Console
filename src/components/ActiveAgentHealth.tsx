@@ -110,30 +110,30 @@ export default function ActiveAgentHealth({ slug }: ActiveAgentHealthProps) {
         [flightData],
     );
 
-    // Find the currently active step in state, then match it to flight data
-    const activeStateItem = useMemo(
-        () => stateItems.find((i) => i.status === "active") ?? null,
+    // Find all currently active steps in state (Wave 2 runs agents in parallel)
+    const activeStateItems = useMemo(
+        () => stateItems.filter((i) => i.status === "active"),
         [stateItems],
     );
 
-    // Match active step to flight data — also consider "in-progress" outcome entries
-    const activeFlightItem = useMemo(
+    // Match each active step to its flight data entry
+    const activeAgents = useMemo(
         () =>
-            activeStateItem
-                ? flightData.find((f) => f.key === activeStateItem.key) ?? null
-                : null,
-        [activeStateItem, flightData],
+            activeStateItems.map((stateItem) => {
+                const flightItem =
+                    flightData.find((f) => f.key === stateItem.key) ?? null;
+                const toolCalls = flightItem
+                    ? getTotalToolCalls(flightItem)
+                    : 0;
+                const health = getHealthStatus(toolCalls);
+                const barWidth = Math.min((toolCalls / 40) * 100, 100);
+                return { stateItem, flightItem, toolCalls, health, barWidth };
+            }),
+        [activeStateItems, flightData],
     );
 
-    const toolCalls = activeFlightItem
-        ? getTotalToolCalls(activeFlightItem)
-        : 0;
-
-    const health = getHealthStatus(toolCalls);
-    const barWidth = Math.min((toolCalls / 40) * 100, 100);
-
     // Determine freshness / staleness
-    const isActive = stateItems.some((i) => i.status === "active");
+    const isActive = activeStateItems.length > 0;
     const freshness = formatFreshness(lastModified);
     const isStale =
         isActive && lastModified
@@ -165,51 +165,53 @@ export default function ActiveAgentHealth({ slug }: ActiveAgentHealthProps) {
                 )}
             </div>
 
-            {/* Active Agent Frustration Meter */}
-            {activeStateItem ? (
-                activeFlightItem ? (
-                    <div className="flex flex-col gap-2">
-                        <div className="flex items-center justify-between text-sm">
-                            <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                                Active: {activeStateItem.label}
-                            </span>
-                            <span className={`font-mono text-xs ${health.color}`}>
-                                {toolCalls} / 40 tool calls
-                            </span>
-                        </div>
+            {/* Active Agent Frustration Meters */}
+            {activeAgents.length > 0 ? (
+                activeAgents.map(({ stateItem, flightItem, toolCalls, health, barWidth }) =>
+                    flightItem ? (
+                        <div key={stateItem.key} className="flex flex-col gap-2">
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                                    Active: {stateItem.label}
+                                </span>
+                                <span className={`font-mono text-xs ${health.color}`}>
+                                    {toolCalls} / 40 tool calls
+                                </span>
+                            </div>
 
-                        {/* Progress Bar */}
-                        <div
-                            className="h-3 w-full rounded-full bg-zinc-200 dark:bg-zinc-700"
-                            role="progressbar"
-                            aria-valuenow={toolCalls}
-                            aria-valuemin={0}
-                            aria-valuemax={40}
-                        >
+                            {/* Progress Bar */}
                             <div
-                                className={`h-3 rounded-full transition-all ${health.barColor}`}
-                                style={{ width: `${barWidth}%` }}
-                                data-testid="health-bar"
-                            />
-                        </div>
-
-                        {/* Badge */}
-                        {health.badge && (
-                            <span
-                                className={`inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${health.badge === "Hard Kill Initiated"
-                                    ? "bg-red-100 text-red-800"
-                                    : "bg-orange-100 text-orange-800"
-                                    }`}
-                                data-testid="health-badge"
+                                className="h-3 w-full rounded-full bg-zinc-200 dark:bg-zinc-700"
+                                role="progressbar"
+                                aria-valuenow={toolCalls}
+                                aria-valuemin={0}
+                                aria-valuemax={40}
                             >
-                                {health.badge}
-                            </span>
-                        )}
-                    </div>
-                ) : (
-                    <div className="text-sm text-zinc-500">
-                        Waiting for agent telemetry...
-                    </div>
+                                <div
+                                    className={`h-3 rounded-full transition-all ${health.barColor}`}
+                                    style={{ width: `${barWidth}%` }}
+                                    data-testid="health-bar"
+                                />
+                            </div>
+
+                            {/* Badge */}
+                            {health.badge && (
+                                <span
+                                    className={`inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${health.badge === "Hard Kill Initiated"
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-orange-100 text-orange-800"
+                                        }`}
+                                    data-testid="health-badge"
+                                >
+                                    {health.badge}
+                                </span>
+                            )}
+                        </div>
+                    ) : (
+                        <div key={stateItem.key} className="text-sm text-zinc-500">
+                            Waiting for agent telemetry...
+                        </div>
+                    ),
                 )
             ) : (
                 <div className="text-sm text-zinc-500">

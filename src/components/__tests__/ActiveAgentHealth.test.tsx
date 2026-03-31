@@ -389,6 +389,46 @@ describe("ActiveAgentHealth", () => {
             expect.objectContaining({ refreshInterval: 3000, keepPreviousData: true }),
         );
     });
+
+    it("renders separate frustration meters for parallel active agents (Wave 2)", () => {
+        const data = makeTelemetry(
+            [
+                makeStateItem("backend-dev", "active"),
+                makeStateItem("frontend-dev", "active"),
+            ],
+            [
+                makeFlightItem({
+                    key: "backend-dev",
+                    toolCounts: { read_file: 10, write_file: 5 },
+                }),
+                makeFlightItem({
+                    key: "frontend-dev",
+                    toolCounts: { read_file: 25, write_file: 10 },
+                }),
+            ],
+        );
+        mockUseSWR.mockReturnValue({ data, isLoading: false });
+        render(<ActiveAgentHealth slug="test" />);
+
+        // Both agent labels should be visible
+        expect(screen.getByText("Active: Backend Dev")).toBeInTheDocument();
+        expect(screen.getByText("Active: Frontend Dev")).toBeInTheDocument();
+
+        // Both tool counts should be visible
+        expect(screen.getByText("15 / 40 tool calls")).toBeInTheDocument();
+        expect(screen.getByText("35 / 40 tool calls")).toBeInTheDocument();
+
+        // Two progress bars rendered
+        const bars = screen.getAllByTestId("health-bar");
+        expect(bars).toHaveLength(2);
+        expect(bars[0]).toHaveClass("bg-green-500");
+        expect(bars[1]).toHaveClass("bg-orange-400");
+
+        // Only frontend-dev triggers badge (35 >= 30 soft limit)
+        const badges = screen.getAllByTestId("health-badge");
+        expect(badges).toHaveLength(1);
+        expect(badges[0]).toHaveTextContent("Soft Interception Triggered");
+    });
 });
 
 // =========================================================================
