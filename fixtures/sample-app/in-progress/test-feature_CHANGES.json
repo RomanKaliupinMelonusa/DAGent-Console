@@ -1,0 +1,46 @@
+{
+  "feature": "test-feature",
+  "stepsCompleted": [
+    {
+      "key": "schema-dev",
+      "agent": "@schema-dev",
+      "filesChanged": [
+        "packages/schemas/src/user.ts"
+      ],
+      "docNote": null
+    },
+    {
+      "key": "backend-dev",
+      "agent": "@backend-dev",
+      "filesChanged": [
+        "backend/src/routes/users.ts",
+        "backend/src/middleware/auth.ts"
+      ],
+      "docNote": "Added REST endpoints for /api/users"
+    },
+    {
+      "key": "frontend-dev",
+      "agent": "@frontend-dev",
+      "filesChanged": [
+        "frontend/src/pages/users.tsx",
+        "frontend/src/components/UserForm.tsx"
+      ],
+      "docNote": "Created user management UI with form validation"
+    }
+  ],
+  "allFilesChanged": [
+    "packages/schemas/src/user.ts",
+    "backend/src/routes/users.ts",
+    "backend/src/middleware/auth.ts",
+    "frontend/src/pages/users.tsx",
+    "frontend/src/components/UserForm.tsx"
+  ],
+  "summaryIntents": [
+    "Read existing schemas",
+    "Generate Zod schemas for user model",
+    "Implement user CRUD endpoints",
+    "Add auth middleware",
+    "Create user list page",
+    "Add form validation"
+  ]
+}

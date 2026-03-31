@@ -1,0 +1,291 @@
+{
+  "version": 1,
+  "generatedAt": "2026-03-31T22:40:18.699Z",
+  "featureSlug": "test-feature",
+  "items": [
+    {
+      "key": "schema-dev",
+      "label": "Schema Dev",
+      "agent": "@schema-dev",
+      "phase": "pre-deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-31T21:55:48.699Z",
+      "finishedAt": "2026-03-31T22:00:48.699Z",
+      "durationMs": 300000,
+      "outcome": "completed",
+      "intents": [
+        "Read existing schemas",
+        "Generate Zod schemas for user model"
+      ],
+      "messages": [
+        "Schema generation complete"
+      ],
+      "filesRead": [
+        "packages/schemas/src/index.ts"
+      ],
+      "filesChanged": [
+        "packages/schemas/src/user.ts"
+      ],
+      "shellCommands": [
+        {
+          "command": "cat packages/schemas/src/index.ts",
+          "timestamp": "2026-03-31T21:56:48.699Z",
+          "isPipelineOp": false
+        }
+      ],
+      "toolCounts": {
+        "file-read": 5,
+        "file-write": 2,
+        "shell": 1,
+        "intent": 2
+      },
+      "inputTokens": 12000,
+      "outputTokens": 3500,
+      "cacheReadTokens": 8000,
+      "cacheWriteTokens": 2000,
+      "headAfterAttempt": "abc1234"
+    },
+    {
+      "key": "backend-dev",
+      "label": "Backend Dev",
+      "agent": "@backend-dev",
+      "phase": "pre-deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-31T22:02:48.699Z",
+      "finishedAt": "2026-03-31T22:12:48.699Z",
+      "durationMs": 600000,
+      "outcome": "completed",
+      "intents": [
+        "Implement user CRUD endpoints",
+        "Add auth middleware"
+      ],
+      "messages": [
+        "Backend implementation complete"
+      ],
+      "filesRead": [
+        "backend/src/routes/index.ts",
+        "backend/src/middleware/auth.ts"
+      ],
+      "filesChanged": [
+        "backend/src/routes/users.ts",
+        "backend/src/middleware/auth.ts"
+      ],
+      "shellCommands": [
+        {
+          "command": "npm test -- --passWithNoTests",
+          "timestamp": "2026-03-31T22:10:48.699Z",
+          "isPipelineOp": false
+        }
+      ],
+      "toolCounts": {
+        "file-read": 12,
+        "file-write": 6,
+        "file-edit": 3,
+        "shell": 2,
+        "search": 4,
+        "intent": 2
+      },
+      "inputTokens": 45000,
+      "outputTokens": 12000,
+      "cacheReadTokens": 30000,
+      "cacheWriteTokens": 8000,
+      "headAfterAttempt": "def5678"
+    },
+    {
+      "key": "frontend-dev",
+      "label": "Frontend Dev",
+      "agent": "@frontend-dev",
+      "phase": "pre-deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-31T22:02:48.699Z",
+      "finishedAt": "2026-03-31T22:15:48.699Z",
+      "durationMs": 780000,
+      "outcome": "completed",
+      "intents": [
+        "Create user list page",
+        "Add form validation"
+      ],
+      "messages": [
+        "Frontend implementation complete"
+      ],
+      "filesRead": [
+        "frontend/src/pages/index.tsx"
+      ],
+      "filesChanged": [
+        "frontend/src/pages/users.tsx",
+        "frontend/src/components/UserForm.tsx"
+      ],
+      "shellCommands": [],
+      "toolCounts": {
+        "file-read": 8,
+        "file-write": 4,
+        "file-edit": 5,
+        "search": 2,
+        "intent": 2
+      },
+      "inputTokens": 38000,
+      "outputTokens": 9500,
+      "cacheReadTokens": 22000,
+      "cacheWriteTokens": 6000,
+      "headAfterAttempt": "ghi9012"
+    },
+    {
+      "key": "backend-unit-test",
+      "label": "Backend Unit Test",
+      "agent": "@backend-test",
+      "phase": "pre-deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-31T22:15:48.699Z",
+      "finishedAt": "2026-03-31T22:20:48.699Z",
+      "durationMs": 300000,
+      "outcome": "failed",
+      "intents": [
+        "Run backend unit tests"
+      ],
+      "messages": [
+        "Tests failed — 2 assertions broken"
+      ],
+      "filesRead": [
+        "backend/src/routes/users.ts"
+      ],
+      "filesChanged": [],
+      "shellCommands": [
+        {
+          "command": "npm test",
+          "timestamp": "2026-03-31T22:16:48.699Z",
+          "isPipelineOp": false
+        }
+      ],
+      "toolCounts": {
+        "file-read": 3,
+        "shell": 2,
+        "intent": 1
+      },
+      "inputTokens": 8000,
+      "outputTokens": 2000,
+      "cacheReadTokens": 5000,
+      "cacheWriteTokens": 1000,
+      "errorMessage": "{\"fault_domain\":\"backend\",\"diagnostic_trace\":\"2 tests failed: UserController.create expects 201 status, got 200. UserController.delete expects soft-delete, got hard-delete.\"}"
+    },
+    {
+      "key": "backend-unit-test",
+      "label": "Backend Unit Test",
+      "agent": "@backend-test",
+      "phase": "pre-deploy",
+      "attempt": 2,
+      "startedAt": "2026-03-31T22:21:48.699Z",
+      "finishedAt": "2026-03-31T22:25:48.699Z",
+      "durationMs": 240000,
+      "outcome": "completed",
+      "intents": [
+        "Fix broken assertions and re-run"
+      ],
+      "messages": [
+        "All 14 tests passing"
+      ],
+      "filesRead": [
+        "backend/src/routes/users.ts"
+      ],
+      "filesChanged": [
+        "backend/src/routes/users.ts"
+      ],
+      "shellCommands": [
+        {
+          "command": "npm test",
+          "timestamp": "2026-03-31T22:24:48.699Z",
+          "isPipelineOp": false
+        }
+      ],
+      "toolCounts": {
+        "file-read": 4,
+        "file-edit": 2,
+        "shell": 2,
+        "intent": 1
+      },
+      "inputTokens": 10000,
+      "outputTokens": 3000,
+      "cacheReadTokens": 7000,
+      "cacheWriteTokens": 1500,
+      "headAfterAttempt": "jkl3456"
+    },
+    {
+      "key": "frontend-unit-test",
+      "label": "Frontend Unit Test",
+      "agent": "@frontend-ui-test",
+      "phase": "pre-deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-31T22:15:48.699Z",
+      "finishedAt": "2026-03-31T22:22:48.699Z",
+      "durationMs": 420000,
+      "outcome": "completed",
+      "intents": [
+        "Run frontend unit tests"
+      ],
+      "messages": [
+        "All 8 tests passing"
+      ],
+      "filesRead": [
+        "frontend/src/pages/users.tsx"
+      ],
+      "filesChanged": [],
+      "shellCommands": [
+        {
+          "command": "npx jest --passWithNoTests",
+          "timestamp": "2026-03-31T22:20:48.699Z",
+          "isPipelineOp": false
+        }
+      ],
+      "toolCounts": {
+        "file-read": 6,
+        "shell": 3,
+        "intent": 1
+      },
+      "inputTokens": 9000,
+      "outputTokens": 2500,
+      "cacheReadTokens": 6000,
+      "cacheWriteTokens": 1200,
+      "headAfterAttempt": "mno7890"
+    },
+    {
+      "key": "code-cleanup",
+      "label": "Code Cleanup",
+      "agent": "@dev-expert",
+      "phase": "pre-deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-31T22:35:48.699Z",
+      "finishedAt": "2026-03-31T22:35:48.699Z",
+      "durationMs": 0,
+      "outcome": "in-progress",
+      "intents": [
+        "Remove dead imports",
+        "Standardize error handling"
+      ],
+      "messages": [],
+      "filesRead": [
+        "backend/src/routes/users.ts",
+        "frontend/src/pages/users.tsx"
+      ],
+      "filesChanged": [
+        "backend/src/routes/users.ts"
+      ],
+      "shellCommands": [
+        {
+          "command": "npx eslint backend/src --fix",
+          "timestamp": "2026-03-31T22:37:48.699Z",
+          "isPipelineOp": false
+        }
+      ],
+      "toolCounts": {
+        "file-read": 14,
+        "file-edit": 6,
+        "shell": 3,
+        "search": 2,
+        "intent": 2
+      },
+      "inputTokens": 18000,
+      "outputTokens": 5500,
+      "cacheReadTokens": 12000,
+      "cacheWriteTokens": 3000
+    }
+  ]
+}

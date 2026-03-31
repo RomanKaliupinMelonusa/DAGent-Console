@@ -54,7 +54,7 @@ function makeStateItem(
 
 function makeFlightItem(overrides: Partial<ItemSummary> & { key: string }): ItemSummary {
     return {
-        label: overrides.key,
+        label: overrides.key.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
         agent: "test-agent",
         phase: "test",
         attempt: 1,
@@ -88,6 +88,7 @@ function makeTelemetry(
             deployedUrl: null,
             implementationNotes: null,
             items: stateItems,
+            errorLog: [],
         },
         flightData,
         changes: {
@@ -285,24 +286,23 @@ describe("ActiveAgentHealth", () => {
         expect(screen.getByText("No active agent")).toBeInTheDocument();
     });
 
-    it("shows 'Waiting for agent telemetry...' when step is active but has no flight data", () => {
+    it("shows 'No active agent' when step is pending but has no in-progress flight data", () => {
         const data = makeTelemetry(
-            [makeStateItem("backend-dev", "active")],
+            [makeStateItem("backend-dev", "pending")],
             [], // no flight data yet
         );
         mockUseSWR.mockReturnValue({ data, isLoading: false });
         render(<ActiveAgentHealth slug="test" />);
-        expect(
-            screen.getByText("Waiting for agent telemetry..."),
-        ).toBeInTheDocument();
+        expect(screen.getByText("No active agent")).toBeInTheDocument();
     });
 
     it("renders a green progress bar when tool calls are below soft limit", () => {
         const data = makeTelemetry(
-            [makeStateItem("backend-dev", "active")],
+            [makeStateItem("backend-dev", "pending")],
             [
                 makeFlightItem({
                     key: "backend-dev",
+                    outcome: "in-progress",
                     toolCounts: { read_file: 5, write_file: 3 },
                 }),
             ],
@@ -317,10 +317,11 @@ describe("ActiveAgentHealth", () => {
 
     it("renders orange bar with badge at exactly 30 tool calls", () => {
         const data = makeTelemetry(
-            [makeStateItem("backend-dev", "active")],
+            [makeStateItem("backend-dev", "pending")],
             [
                 makeFlightItem({
                     key: "backend-dev",
+                    outcome: "in-progress",
                     toolCounts: { read_file: 20, write_file: 10 },
                 }),
             ],
@@ -337,10 +338,11 @@ describe("ActiveAgentHealth", () => {
 
     it("renders red bar with badge at exactly 40 tool calls", () => {
         const data = makeTelemetry(
-            [makeStateItem("backend-dev", "active")],
+            [makeStateItem("backend-dev", "pending")],
             [
                 makeFlightItem({
                     key: "backend-dev",
+                    outcome: "in-progress",
                     toolCounts: { read_file: 25, write_file: 10, run_command: 5 },
                 }),
             ],
@@ -357,8 +359,8 @@ describe("ActiveAgentHealth", () => {
 
     it("renders the active agent label", () => {
         const data = makeTelemetry(
-            [makeStateItem("backend-dev", "active")],
-            [makeFlightItem({ key: "backend-dev", toolCounts: { read_file: 1 } })],
+            [makeStateItem("backend-dev", "pending")],
+            [makeFlightItem({ key: "backend-dev", outcome: "in-progress", toolCounts: { read_file: 1 } })],
         );
         mockUseSWR.mockReturnValue({ data, isLoading: false });
         render(<ActiveAgentHealth slug="test" />);
@@ -367,10 +369,11 @@ describe("ActiveAgentHealth", () => {
 
     it("displays tool call count as fraction of hard limit", () => {
         const data = makeTelemetry(
-            [makeStateItem("backend-dev", "active")],
+            [makeStateItem("backend-dev", "pending")],
             [
                 makeFlightItem({
                     key: "backend-dev",
+                    outcome: "in-progress",
                     toolCounts: { read_file: 12, write_file: 3 },
                 }),
             ],
@@ -393,16 +396,18 @@ describe("ActiveAgentHealth", () => {
     it("renders separate frustration meters for parallel active agents (Wave 2)", () => {
         const data = makeTelemetry(
             [
-                makeStateItem("backend-dev", "active"),
-                makeStateItem("frontend-dev", "active"),
+                makeStateItem("backend-dev", "pending"),
+                makeStateItem("frontend-dev", "pending"),
             ],
             [
                 makeFlightItem({
                     key: "backend-dev",
+                    outcome: "in-progress",
                     toolCounts: { read_file: 10, write_file: 5 },
                 }),
                 makeFlightItem({
                     key: "frontend-dev",
+                    outcome: "in-progress",
                     toolCounts: { read_file: 25, write_file: 10 },
                 }),
             ],

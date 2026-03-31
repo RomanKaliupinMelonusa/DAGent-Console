@@ -1,0 +1,460 @@
+{
+  "version": 1,
+  "generatedAt": "2026-03-30T00:00:48.699Z",
+  "featureSlug": "old-feature",
+  "items": [
+    {
+      "key": "schema-dev",
+      "label": "Schema Dev",
+      "agent": "@schema-dev",
+      "phase": "pre-deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-29T22:40:48.699Z",
+      "finishedAt": "2026-03-29T22:50:48.699Z",
+      "durationMs": 600000,
+      "outcome": "completed",
+      "intents": [
+        "Analyze DB schema"
+      ],
+      "messages": [
+        "Done"
+      ],
+      "filesRead": [],
+      "filesChanged": [
+        "db/schema.sql"
+      ],
+      "shellCommands": [],
+      "toolCounts": {
+        "file-read": 3,
+        "file-write": 1
+      },
+      "inputTokens": 8000,
+      "outputTokens": 2000,
+      "cacheReadTokens": 5000,
+      "cacheWriteTokens": 1000,
+      "headAfterAttempt": "aaa1111"
+    },
+    {
+      "key": "backend-dev",
+      "label": "Backend Dev",
+      "agent": "@backend-dev",
+      "phase": "pre-deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-29T22:50:48.699Z",
+      "finishedAt": "2026-03-29T23:10:48.699Z",
+      "durationMs": 1200000,
+      "outcome": "completed",
+      "intents": [
+        "Build API layer"
+      ],
+      "messages": [
+        "Done"
+      ],
+      "filesRead": [],
+      "filesChanged": [
+        "backend/src/api.ts"
+      ],
+      "shellCommands": [],
+      "toolCounts": {
+        "file-read": 15,
+        "file-write": 8,
+        "shell": 3
+      },
+      "inputTokens": 55000,
+      "outputTokens": 18000,
+      "cacheReadTokens": 35000,
+      "cacheWriteTokens": 10000,
+      "headAfterAttempt": "bbb2222"
+    },
+    {
+      "key": "frontend-dev",
+      "label": "Frontend Dev",
+      "agent": "@frontend-dev",
+      "phase": "pre-deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-29T22:50:48.699Z",
+      "finishedAt": "2026-03-29T23:15:48.699Z",
+      "durationMs": 1500000,
+      "outcome": "completed",
+      "intents": [
+        "Create dashboard"
+      ],
+      "messages": [
+        "Done"
+      ],
+      "filesRead": [],
+      "filesChanged": [
+        "frontend/src/App.tsx"
+      ],
+      "shellCommands": [],
+      "toolCounts": {
+        "file-read": 10,
+        "file-write": 5,
+        "shell": 2
+      },
+      "inputTokens": 42000,
+      "outputTokens": 11000,
+      "cacheReadTokens": 28000,
+      "cacheWriteTokens": 7000,
+      "headAfterAttempt": "ccc3333"
+    },
+    {
+      "key": "backend-unit-test",
+      "label": "Backend Unit Test",
+      "agent": "@backend-test",
+      "phase": "pre-deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-29T23:15:48.699Z",
+      "finishedAt": "2026-03-29T23:20:48.699Z",
+      "durationMs": 300000,
+      "outcome": "error",
+      "intents": [
+        "Run tests"
+      ],
+      "messages": [],
+      "filesRead": [],
+      "filesChanged": [],
+      "shellCommands": [
+        {
+          "command": "npm test",
+          "timestamp": "2026-03-29T23:18:48.699Z",
+          "isPipelineOp": false
+        }
+      ],
+      "toolCounts": {
+        "shell": 2
+      },
+      "inputTokens": 5000,
+      "outputTokens": 1000,
+      "cacheReadTokens": 3000,
+      "cacheWriteTokens": 500,
+      "errorMessage": "Cognitive circuit breaker: Jest hung on database connection teardown after 60s"
+    },
+    {
+      "key": "backend-unit-test",
+      "label": "Backend Unit Test",
+      "agent": "@backend-test",
+      "phase": "pre-deploy",
+      "attempt": 2,
+      "startedAt": "2026-03-29T23:21:48.699Z",
+      "finishedAt": "2026-03-29T23:30:48.699Z",
+      "durationMs": 540000,
+      "outcome": "completed",
+      "intents": [
+        "Fix teardown and retry"
+      ],
+      "messages": [
+        "All tests pass"
+      ],
+      "filesRead": [],
+      "filesChanged": [
+        "backend/jest.teardown.ts"
+      ],
+      "shellCommands": [
+        {
+          "command": "npm test",
+          "timestamp": "2026-03-29T23:28:48.699Z",
+          "isPipelineOp": false
+        }
+      ],
+      "toolCounts": {
+        "file-read": 3,
+        "file-edit": 1,
+        "shell": 2
+      },
+      "inputTokens": 12000,
+      "outputTokens": 3500,
+      "cacheReadTokens": 8000,
+      "cacheWriteTokens": 2000,
+      "headAfterAttempt": "ddd4444"
+    },
+    {
+      "key": "frontend-unit-test",
+      "label": "Frontend Unit Test",
+      "agent": "@frontend-ui-test",
+      "phase": "pre-deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-29T23:15:48.699Z",
+      "finishedAt": "2026-03-29T23:25:48.699Z",
+      "durationMs": 600000,
+      "outcome": "completed",
+      "intents": [
+        "Run frontend tests"
+      ],
+      "messages": [
+        "12 tests pass"
+      ],
+      "filesRead": [],
+      "filesChanged": [],
+      "shellCommands": [],
+      "toolCounts": {
+        "file-read": 4,
+        "shell": 2
+      },
+      "inputTokens": 7000,
+      "outputTokens": 1800,
+      "cacheReadTokens": 4500,
+      "cacheWriteTokens": 900,
+      "headAfterAttempt": "eee5555"
+    },
+    {
+      "key": "code-cleanup",
+      "label": "Code Cleanup",
+      "agent": "@dev-expert",
+      "phase": "pre-deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-29T23:30:48.699Z",
+      "finishedAt": "2026-03-29T23:35:48.699Z",
+      "durationMs": 300000,
+      "outcome": "completed",
+      "intents": [
+        "Remove dead code"
+      ],
+      "messages": [
+        "Done"
+      ],
+      "filesRead": [],
+      "filesChanged": [
+        "backend/src/api.ts"
+      ],
+      "shellCommands": [],
+      "toolCounts": {
+        "file-read": 6,
+        "file-edit": 3
+      },
+      "inputTokens": 10000,
+      "outputTokens": 2500,
+      "cacheReadTokens": 7000,
+      "cacheWriteTokens": 1500,
+      "headAfterAttempt": "fff6666"
+    },
+    {
+      "key": "create-draft-pr",
+      "label": "Create Draft PR",
+      "agent": "@deploy-manager",
+      "phase": "deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-29T23:35:48.699Z",
+      "finishedAt": "2026-03-29T23:37:48.699Z",
+      "durationMs": 120000,
+      "outcome": "completed",
+      "intents": [
+        "Create GitHub PR"
+      ],
+      "messages": [
+        "PR #42 created"
+      ],
+      "filesRead": [],
+      "filesChanged": [],
+      "shellCommands": [
+        {
+          "command": "gh pr create --draft",
+          "timestamp": "2026-03-29T23:36:48.699Z",
+          "isPipelineOp": true
+        }
+      ],
+      "toolCounts": {
+        "shell": 1
+      },
+      "inputTokens": 3000,
+      "outputTokens": 800,
+      "cacheReadTokens": 2000,
+      "cacheWriteTokens": 400
+    },
+    {
+      "key": "push-app",
+      "label": "Push App",
+      "agent": "@deploy-manager",
+      "phase": "deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-29T23:37:48.699Z",
+      "finishedAt": "2026-03-29T23:40:48.699Z",
+      "durationMs": 180000,
+      "outcome": "completed",
+      "intents": [
+        "Push to origin"
+      ],
+      "messages": [
+        "Pushed"
+      ],
+      "filesRead": [],
+      "filesChanged": [],
+      "shellCommands": [
+        {
+          "command": "git push origin feature/old-feature",
+          "timestamp": "2026-03-29T23:39:48.699Z",
+          "isPipelineOp": true
+        }
+      ],
+      "toolCounts": {
+        "shell": 2
+      },
+      "inputTokens": 2000,
+      "outputTokens": 500,
+      "cacheReadTokens": 1500,
+      "cacheWriteTokens": 300
+    },
+    {
+      "key": "poll-app-ci",
+      "label": "Poll App CI",
+      "agent": "@deploy-manager",
+      "phase": "deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-29T23:40:48.699Z",
+      "finishedAt": "2026-03-29T23:50:48.699Z",
+      "durationMs": 600000,
+      "outcome": "completed",
+      "intents": [
+        "Wait for CI"
+      ],
+      "messages": [
+        "CI green"
+      ],
+      "filesRead": [],
+      "filesChanged": [],
+      "shellCommands": [
+        {
+          "command": "gh run list --branch feature/old-feature",
+          "timestamp": "2026-03-29T23:45:48.699Z",
+          "isPipelineOp": false
+        }
+      ],
+      "toolCounts": {
+        "shell": 5
+      },
+      "inputTokens": 4000,
+      "outputTokens": 1000,
+      "cacheReadTokens": 2500,
+      "cacheWriteTokens": 500
+    },
+    {
+      "key": "integration-test",
+      "label": "Integration Test",
+      "agent": "@backend-test",
+      "phase": "post-deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-29T23:50:48.699Z",
+      "finishedAt": "2026-03-29T23:55:48.699Z",
+      "durationMs": 300000,
+      "outcome": "completed",
+      "intents": [
+        "Run integration suite"
+      ],
+      "messages": [
+        "All pass"
+      ],
+      "filesRead": [],
+      "filesChanged": [],
+      "shellCommands": [
+        {
+          "command": "npm run test:integration",
+          "timestamp": "2026-03-29T23:53:48.699Z",
+          "isPipelineOp": false
+        }
+      ],
+      "toolCounts": {
+        "shell": 2
+      },
+      "inputTokens": 6000,
+      "outputTokens": 1500,
+      "cacheReadTokens": 4000,
+      "cacheWriteTokens": 800
+    },
+    {
+      "key": "live-ui",
+      "label": "Live UI",
+      "agent": "@frontend-ui-test",
+      "phase": "post-deploy",
+      "attempt": 1,
+      "startedAt": "2026-03-29T23:50:48.699Z",
+      "finishedAt": "2026-03-29T23:57:48.699Z",
+      "durationMs": 420000,
+      "outcome": "completed",
+      "intents": [
+        "Run Playwright visual tests"
+      ],
+      "messages": [
+        "6 screenshots captured"
+      ],
+      "filesRead": [],
+      "filesChanged": [],
+      "shellCommands": [
+        {
+          "command": "npx playwright test",
+          "timestamp": "2026-03-29T23:54:48.699Z",
+          "isPipelineOp": false
+        }
+      ],
+      "toolCounts": {
+        "shell": 3
+      },
+      "inputTokens": 8000,
+      "outputTokens": 2000,
+      "cacheReadTokens": 5000,
+      "cacheWriteTokens": 1000
+    },
+    {
+      "key": "docs-archived",
+      "label": "Docs Archived",
+      "agent": "@docs-agent",
+      "phase": "finalize",
+      "attempt": 1,
+      "startedAt": "2026-03-29T23:57:48.699Z",
+      "finishedAt": "2026-03-29T23:59:48.699Z",
+      "durationMs": 120000,
+      "outcome": "completed",
+      "intents": [
+        "Generate docs"
+      ],
+      "messages": [
+        "Docs written"
+      ],
+      "filesRead": [],
+      "filesChanged": [
+        "docs/old-feature.md"
+      ],
+      "shellCommands": [],
+      "toolCounts": {
+        "file-read": 2,
+        "file-write": 1
+      },
+      "inputTokens": 5000,
+      "outputTokens": 1500,
+      "cacheReadTokens": 3000,
+      "cacheWriteTokens": 600
+    },
+    {
+      "key": "create-pr",
+      "label": "Create PR",
+      "agent": "@deploy-manager",
+      "phase": "finalize",
+      "attempt": 1,
+      "startedAt": "2026-03-29T23:59:48.699Z",
+      "finishedAt": "2026-03-30T00:00:48.699Z",
+      "durationMs": 60000,
+      "outcome": "completed",
+      "intents": [
+        "Mark PR ready for review"
+      ],
+      "messages": [
+        "PR ready"
+      ],
+      "filesRead": [],
+      "filesChanged": [],
+      "shellCommands": [
+        {
+          "command": "gh pr ready 42",
+          "timestamp": "2026-03-30T00:00:48.699Z",
+          "isPipelineOp": true
+        }
+      ],
+      "toolCounts": {
+        "shell": 1
+      },
+      "inputTokens": 2000,
+      "outputTokens": 500,
+      "cacheReadTokens": 1000,
+      "cacheWriteTokens": 200
+    }
+  ]
+}

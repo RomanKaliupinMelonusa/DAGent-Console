@@ -5,9 +5,15 @@ export interface PipelineStateItem {
     label: string;
     agent: string;
     phase: string;
-    status: "pending" | "active" | "done" | "na";
+    status: "pending" | "done" | "failed" | "na";
     error: string | null;
-    docNote?: string;
+    docNote?: string | null;
+}
+
+export interface PipelineErrorLogEntry {
+    timestamp: string;
+    itemKey: string;
+    message: string;
 }
 
 export interface PipelineState {
@@ -17,9 +23,16 @@ export interface PipelineState {
     deployedUrl: string | null;
     implementationNotes: string | null;
     items: PipelineStateItem[];
+    errorLog: PipelineErrorLogEntry[];
 }
 
 // ---------- _FLIGHT_DATA.json ----------
+
+export interface ShellEntry {
+    command: string;
+    timestamp: string;
+    isPipelineOp: boolean;
+}
 
 export interface ItemSummary {
     key: string;
@@ -30,20 +43,29 @@ export interface ItemSummary {
     startedAt: string;
     finishedAt: string;
     durationMs: number;
-    outcome: "completed" | "failed" | "error" | "skipped" | "in-progress";
+    outcome: "completed" | "failed" | "error" | "in-progress";
     intents: string[];
     messages: string[];
     filesRead: string[];
     filesChanged: string[];
-    shellCommands: { command: string; timestamp: string; isPipelineOp: boolean }[];
+    shellCommands: ShellEntry[];
     toolCounts: Record<string, number>;
     inputTokens: number;
     outputTokens: number;
     cacheReadTokens: number;
     cacheWriteTokens: number;
     errorMessage?: string;
+    headAfterAttempt?: string;
 }
 
+export interface FlightDataEnvelope {
+    version: 1;
+    generatedAt: string;
+    featureSlug: string;
+    items: ItemSummary[];
+}
+
+/** Convenience alias — always the items array extracted from the envelope. */
 export type FlightData = ItemSummary[];
 
 // ---------- _CHANGES.json ----------
@@ -69,6 +91,13 @@ export interface PipelineTelemetry {
     flightData: FlightData;
     changes: ChangeManifest;
     lastModified?: string;
+    /** Markdown files available in the pipeline directory. */
+    markdownFiles?: {
+        summary?: string;
+        terminalLog?: string;
+        playwrightLog?: string;
+        transitionLog?: string;
+    };
 }
 
 // ---------- Pipeline Discovery (Launchpad) ----------

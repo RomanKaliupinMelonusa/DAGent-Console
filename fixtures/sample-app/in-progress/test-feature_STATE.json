@@ -1,0 +1,131 @@
+{
+  "feature": "test-feature",
+  "workflowType": "fullstack",
+  "started": "2026-03-31T21:55:48.699Z",
+  "deployedUrl": null,
+  "implementationNotes": null,
+  "items": [
+    {
+      "key": "schema-dev",
+      "label": "Schema Dev",
+      "agent": "@schema-dev",
+      "phase": "pre-deploy",
+      "status": "done",
+      "error": null
+    },
+    {
+      "key": "backend-dev",
+      "label": "Backend Dev",
+      "agent": "@backend-dev",
+      "phase": "pre-deploy",
+      "status": "done",
+      "error": null,
+      "docNote": "Added REST endpoints for /api/users"
+    },
+    {
+      "key": "frontend-dev",
+      "label": "Frontend Dev",
+      "agent": "@frontend-dev",
+      "phase": "pre-deploy",
+      "status": "done",
+      "error": null
+    },
+    {
+      "key": "backend-unit-test",
+      "label": "Backend Unit Test",
+      "agent": "@backend-test",
+      "phase": "pre-deploy",
+      "status": "done",
+      "error": null
+    },
+    {
+      "key": "frontend-unit-test",
+      "label": "Frontend Unit Test",
+      "agent": "@frontend-ui-test",
+      "phase": "pre-deploy",
+      "status": "done",
+      "error": null
+    },
+    {
+      "key": "code-cleanup",
+      "label": "Code Cleanup",
+      "agent": "@dev-expert",
+      "phase": "pre-deploy",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "key": "push-infra",
+      "label": "Push Infra",
+      "agent": "@deploy-manager",
+      "phase": "deploy",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "key": "poll-infra-plan",
+      "label": "Poll Infra Plan",
+      "agent": "@deploy-manager",
+      "phase": "deploy",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "key": "create-draft-pr",
+      "label": "Create Draft PR",
+      "agent": "@deploy-manager",
+      "phase": "deploy",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "key": "push-app",
+      "label": "Push App",
+      "agent": "@deploy-manager",
+      "phase": "deploy",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "key": "poll-app-ci",
+      "label": "Poll App CI",
+      "agent": "@deploy-manager",
+      "phase": "deploy",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "key": "integration-test",
+      "label": "Integration Test",
+      "agent": "@backend-test",
+      "phase": "post-deploy",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "key": "live-ui",
+      "label": "Live UI",
+      "agent": "@frontend-ui-test",
+      "phase": "post-deploy",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "key": "docs-archived",
+      "label": "Docs Archived",
+      "agent": "@docs-agent",
+      "phase": "finalize",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "key": "create-pr",
+      "label": "Create PR",
+      "agent": "@deploy-manager",
+      "phase": "finalize",
+      "status": "pending",
+      "error": null
+    }
+  ],
+  "errorLog": []
+}

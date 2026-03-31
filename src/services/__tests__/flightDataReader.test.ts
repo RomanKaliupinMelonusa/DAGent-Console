@@ -55,10 +55,11 @@ const VALID_STATE: PipelineState = {
             label: "Coding",
             agent: "coder",
             phase: "implement",
-            status: "active",
+            status: "pending",
             error: null,
         },
     ],
+    errorLog: [],
 };
 
 const VALID_FLIGHT_DATA: FlightData = [
@@ -130,6 +131,8 @@ describe("getPipelineTelemetry", () => {
             if (p.endsWith(`${SLUG}_STATE.json`)) return JSON.stringify(VALID_STATE);
             if (p.endsWith(`${SLUG}_FLIGHT_DATA.json`)) return JSON.stringify(VALID_FLIGHT_DATA);
             if (p.endsWith(`${SLUG}_CHANGES.json`)) return JSON.stringify(VALID_CHANGES);
+            // Markdown files — return empty
+            if (p.endsWith(".md")) throw enoent();
             throw enoent();
         });
 
@@ -137,7 +140,7 @@ describe("getPipelineTelemetry", () => {
 
         expect(telemetry.state).toEqual(VALID_STATE);
         expect(telemetry.state.items[0].status).toBe("done");
-        expect(telemetry.state.items[1].status).toBe("active");
+        expect(telemetry.state.items[1].status).toBe("pending");
 
         expect(telemetry.flightData).toEqual(VALID_FLIGHT_DATA);
         expect(telemetry.flightData[0].toolCounts).toEqual({ read_file: 2, write_file: 1 });
@@ -413,8 +416,9 @@ describe("listPipelines", () => {
             implementationNotes: null,
             items: [
                 { key: "plan", label: "Planning", agent: "planner", phase: "plan", status: "done", error: null },
-                { key: "code", label: "Coding", agent: "coder", phase: "implement", status: "active", error: null },
+                { key: "code", label: "Coding", agent: "coder", phase: "implement", status: "pending", error: null },
             ],
+            errorLog: [],
         };
 
         const stateB: PipelineState = {
@@ -426,6 +430,7 @@ describe("listPipelines", () => {
             items: [
                 { key: "plan", label: "Planning", agent: "planner", phase: "plan", status: "done", error: null },
             ],
+            errorLog: [],
         };
 
         mockReadFile.mockImplementation(async (filePath) => {
@@ -433,13 +438,14 @@ describe("listPipelines", () => {
             if (p.endsWith("feature-a_STATE.json")) return JSON.stringify(stateA);
             if (p.endsWith("feature-b_STATE.json")) return JSON.stringify(stateB);
             if (p.endsWith("_FLIGHT_DATA.json")) return "[]";
+            if (p.endsWith(".md")) throw enoent();
             throw enoent();
         });
 
         const result = await listPipelines();
 
         expect(result).toHaveLength(2);
-        // Active pipelines sort first
+        // Active pipelines sort first (feature-a has pending items)
         expect(result[0].slug).toBe("feature-a");
         expect(result[0].overallStatus).toBe("active");
         expect(result[0].activeStep).toBe("Coding");
@@ -478,6 +484,7 @@ describe("listPipelines", () => {
             items: [
                 { key: "code", label: "Coding", agent: "coder", phase: "implement", status: "done", error: "Playwright timeout" },
             ],
+            errorLog: [],
         };
 
         mockReadFile.mockImplementation(async (filePath) => {
@@ -502,6 +509,7 @@ describe("listPipelines", () => {
                 { key: "plan", label: "Planning", agent: "planner", phase: "plan", status: "done", error: null },
                 { key: "code", label: "Coding", agent: "coder", phase: "implement", status: "done", error: null },
             ],
+            errorLog: [],
         };
 
         // No in-progress pipelines; one archived pipeline
@@ -534,8 +542,9 @@ describe("listPipelines", () => {
             deployedUrl: null,
             implementationNotes: null,
             items: [
-                { key: "code", label: "Coding", agent: "coder", phase: "implement", status: "active", error: null },
+                { key: "code", label: "Coding", agent: "coder", phase: "implement", status: "pending", error: null },
             ],
+            errorLog: [],
         };
 
         const archivedState: PipelineState = {
@@ -547,6 +556,7 @@ describe("listPipelines", () => {
             items: [
                 { key: "plan", label: "Planning", agent: "planner", phase: "plan", status: "done", error: null },
             ],
+            errorLog: [],
         };
 
         setupReaddir(

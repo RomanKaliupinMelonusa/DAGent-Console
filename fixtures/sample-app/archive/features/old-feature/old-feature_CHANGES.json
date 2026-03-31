@@ -1,0 +1,58 @@
+{
+  "feature": "old-feature",
+  "stepsCompleted": [
+    {
+      "key": "schema-dev",
+      "agent": "@schema-dev",
+      "filesChanged": [
+        "db/schema.sql"
+      ],
+      "docNote": null
+    },
+    {
+      "key": "backend-dev",
+      "agent": "@backend-dev",
+      "filesChanged": [
+        "backend/src/api.ts"
+      ],
+      "docNote": "Built REST API with Express"
+    },
+    {
+      "key": "frontend-dev",
+      "agent": "@frontend-dev",
+      "filesChanged": [
+        "frontend/src/App.tsx"
+      ],
+      "docNote": "Dashboard with React"
+    },
+    {
+      "key": "code-cleanup",
+      "agent": "@dev-expert",
+      "filesChanged": [
+        "backend/src/api.ts"
+      ],
+      "docNote": "Removed unused imports"
+    },
+    {
+      "key": "docs-archived",
+      "agent": "@docs-agent",
+      "filesChanged": [
+        "docs/old-feature.md"
+      ],
+      "docNote": null
+    }
+  ],
+  "allFilesChanged": [
+    "db/schema.sql",
+    "backend/src/api.ts",
+    "frontend/src/App.tsx",
+    "docs/old-feature.md",
+    "backend/jest.teardown.ts"
+  ],
+  "summaryIntents": [
+    "Analyze DB schema",
+    "Build API layer",
+    "Create dashboard",
+    "Remove dead code"
+  ]
+}

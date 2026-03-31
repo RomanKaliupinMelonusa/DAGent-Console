@@ -16,6 +16,7 @@ export const DEFAULT_STATE: PipelineState = {
     deployedUrl: null,
     implementationNotes: null,
     items: [],
+    errorLog: [],
 };
 
 export const DEFAULT_FLIGHT_DATA: FlightData = [];
@@ -58,6 +59,34 @@ async function readJsonFile<T>(filePaths: string | string[], fallback: T): Promi
     return structuredClone(fallback);
 }
 
+/**
+ * Read flight data JSON which may be:
+ *   - An envelope: { version: 1, generatedAt, featureSlug, items: [...] }
+ *   - A bare array: [...]  (legacy/test format)
+ * Always returns the items array.
+ */
+async function readFlightData(filePaths: string[]): Promise<FlightData> {
+    for (const p of filePaths) {
+        try {
+            const raw = await fs.readFile(p, "utf-8");
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed as FlightData;
+            if (parsed && typeof parsed === "object" && Array.isArray(parsed.items)) {
+                // Validate envelope version for forward-compat
+                if (parsed.version !== undefined && parsed.version !== 1) {
+                    // Unknown version — return items best-effort but log nothing
+                }
+                return parsed.items as FlightData;
+            }
+            return [];
+        } catch (err) {
+            if (isEnoent(err)) continue;
+            return [];
+        }
+    }
+    return [];
+}
+
 async function readTextFile(filePaths: string | string[], fallback: string): Promise<string> {
     const paths = Array.isArray(filePaths) ? filePaths : [filePaths];
     for (const p of paths) {
@@ -82,22 +111,36 @@ export async function getPipelineTelemetry(
         };
     }
 
-    const [state, flightData, changes] = await Promise.all([
-        readJsonFile<PipelineState>(
-            candidatePaths(slug, `${slug}_STATE.json`),
-            DEFAULT_STATE,
-        ),
-        readJsonFile<FlightData>(
-            candidatePaths(slug, `${slug}_FLIGHT_DATA.json`),
-            DEFAULT_FLIGHT_DATA,
-        ),
-        readJsonFile<ChangeManifest>(
-            candidatePaths(slug, `${slug}_CHANGES.json`),
-            DEFAULT_CHANGES,
-        ),
-    ]);
+    const [state, flightData, changes, summary, terminalLog, playwrightLog, transitionLog] =
+        await Promise.all([
+            readJsonFile<PipelineState>(
+                candidatePaths(slug, `${slug}_STATE.json`),
+                DEFAULT_STATE,
+            ),
+            readFlightData(
+                candidatePaths(slug, `${slug}_FLIGHT_DATA.json`),
+            ),
+            readJsonFile<ChangeManifest>(
+                candidatePaths(slug, `${slug}_CHANGES.json`),
+                DEFAULT_CHANGES,
+            ),
+            readTextFile(candidatePaths(slug, `${slug}_SUMMARY.md`), ""),
+            readTextFile(candidatePaths(slug, `${slug}_TERMINAL-LOG.md`), ""),
+            readTextFile(candidatePaths(slug, `${slug}_PLAYWRIGHT-LOG.md`), ""),
+            readTextFile(candidatePaths(slug, `${slug}_TRANS.md`), ""),
+        ]);
 
-    return { state, flightData, changes };
+    return {
+        state,
+        flightData,
+        changes,
+        markdownFiles: {
+            summary: summary || undefined,
+            terminalLog: terminalLog || undefined,
+            playwrightLog: playwrightLog || undefined,
+            transitionLog: transitionLog || undefined,
+        },
+    };
 }
 
 export const DEFAULT_SPEC = "Spec file not found. Assume standard feature implementation.";
@@ -151,11 +194,15 @@ function calculateCost(flightData: FlightData): number {
     return total;
 }
 
-function deriveOverallStatus(state: PipelineState): PipelineOverallStatus {
+function deriveOverallStatus(state: PipelineState, flightData: FlightData): PipelineOverallStatus {
     const items = state.items;
+    // Check flight data for any in-progress step
+    if (flightData.some((f) => f.outcome === "in-progress")) return "active";
     if (items.length === 0) return "active";
-    if (items.some((i) => i.status === "active")) return "active";
-    const hasError = items.some((i) => i.error !== null);
+    // All items resolved — check for failures
+    const allResolved = items.every((i) => i.status === "done" || i.status === "na");
+    if (!allResolved) return "active"; // some items still pending
+    const hasError = items.some((i) => i.error !== null || i.status === "failed");
     if (hasError) return "failed";
     return "completed";
 }
@@ -210,12 +257,16 @@ async function buildSummary(slug: string): Promise<PipelineSummary> {
         candidatePaths(slug, `${slug}_STATE.json`),
         DEFAULT_STATE,
     );
-    const flightData = await readJsonFile<FlightData>(
+    const flightData = await readFlightData(
         candidatePaths(slug, `${slug}_FLIGHT_DATA.json`),
-        DEFAULT_FLIGHT_DATA,
     );
 
-    const activeItem = state.items.find((i) => i.status === "active");
+    // Active step = last flight data item with outcome "in-progress",
+    // or fallback to first pending state item
+    const inProgressItem = flightData.find((f) => f.outcome === "in-progress");
+    const pendingItem = state.items.find((i) => i.status === "pending");
+    const activeLabel = inProgressItem?.label ?? pendingItem?.label ?? null;
+
     const lastFlight = flightData.length > 0
         ? flightData[flightData.length - 1]
         : null;
@@ -225,10 +276,10 @@ async function buildSummary(slug: string): Promise<PipelineSummary> {
         feature: state.feature || slug,
         workflowType: state.workflowType || "unknown",
         started: state.started || "",
-        overallStatus: deriveOverallStatus(state),
+        overallStatus: deriveOverallStatus(state, flightData),
         lastActivity: lastFlight?.finishedAt ?? lastFlight?.startedAt ?? null,
         totalCost: calculateCost(flightData),
-        activeStep: activeItem?.label ?? null,
+        activeStep: activeLabel,
     };
 }
 

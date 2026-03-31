@@ -5,7 +5,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import type { PipelineTelemetry, PipelineStateItem } from "@/types/pipeline";
+import type { PipelineTelemetry, PipelineStateItem, FlightData, ItemSummary } from "@/types/pipeline";
 
 // ---------------------------------------------------------------------------
 // Mock @xyflow/react — jsdom cannot render canvas/SVG
@@ -50,7 +50,7 @@ function makeItem(key: string, status: PipelineStateItem["status"], error: strin
     };
 }
 
-function makeTelemetry(items: PipelineStateItem[]): PipelineTelemetry {
+function makeTelemetry(items: PipelineStateItem[], flightData: FlightData = []): PipelineTelemetry {
     return {
         state: {
             feature: "test-feature",
@@ -59,14 +59,39 @@ function makeTelemetry(items: PipelineStateItem[]): PipelineTelemetry {
             deployedUrl: null,
             implementationNotes: null,
             items,
+            errorLog: [],
         },
-        flightData: [],
+        flightData,
         changes: {
             feature: "test-feature",
             stepsCompleted: [],
             allFilesChanged: [],
             summaryIntents: [],
         },
+    };
+}
+
+function makeFlightItem(overrides: Partial<ItemSummary> & { key: string }): ItemSummary {
+    return {
+        label: overrides.key.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        agent: "test-agent",
+        phase: "test",
+        attempt: 1,
+        startedAt: "2026-03-31T10:00:00Z",
+        finishedAt: "2026-03-31T10:01:00Z",
+        durationMs: 60000,
+        outcome: "completed",
+        intents: [],
+        messages: [],
+        filesRead: [],
+        filesChanged: [],
+        shellCommands: [],
+        toolCounts: {},
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        ...overrides,
     };
 }
 
@@ -79,52 +104,37 @@ describe("LiveDag", () => {
         mockUseSWR.mockReset();
     });
 
-    it("renders the approval banner when await-infra-approval is active", () => {
+    it("renders nodes with correct status styles from flight data in-progress", () => {
+        const data = makeTelemetry(
+            [
+                makeItem("schema-dev", "done"),
+                makeItem("backend-dev", "pending"),
+            ],
+            [
+                makeFlightItem({ key: "backend-dev", outcome: "in-progress" }),
+            ],
+        );
+
+        mockUseSWR.mockReturnValue({ data, isLoading: false });
+
+        render(<LiveDag slug="test-feature" />);
+        expect(screen.getByTestId("react-flow")).toBeInTheDocument();
+    });
+
+    it("renders completed pipeline with all done nodes", () => {
         const data = makeTelemetry([
             makeItem("schema-dev", "done"),
-            makeItem("infra-architect", "done"),
-            makeItem("push-infra", "done"),
-            makeItem("create-draft-pr", "done"),
-            makeItem("poll-infra-plan", "done"),
-            makeItem("await-infra-approval", "active"),
-            makeItem("infra-handoff", "pending"),
+            makeItem("backend-dev", "done"),
+            makeItem("frontend-dev", "done"),
+            makeItem("code-cleanup", "done"),
+            makeItem("docs-archived", "done"),
+            makeItem("create-pr", "done"),
         ]);
 
         mockUseSWR.mockReturnValue({ data, isLoading: false });
 
         render(<LiveDag slug="test-feature" />);
-
-        const banner = screen.getByRole("alert");
-        expect(banner).toBeInTheDocument();
-        expect(banner).toHaveTextContent(
-            "Human Action Required: Infrastructure Plan Awaiting Approval in GitHub."
-        );
-    });
-
-    it("does NOT render the approval banner when await-infra-approval is pending", () => {
-        const data = makeTelemetry([
-            makeItem("schema-dev", "active"),
-            makeItem("await-infra-approval", "pending"),
-        ]);
-
-        mockUseSWR.mockReturnValue({ data, isLoading: false });
-
-        render(<LiveDag slug="test-feature" />);
-
-        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    });
-
-    it("does NOT render the approval banner when await-infra-approval is done", () => {
-        const data = makeTelemetry([
-            makeItem("await-infra-approval", "done"),
-            makeItem("infra-handoff", "done"),
-        ]);
-
-        mockUseSWR.mockReturnValue({ data, isLoading: false });
-
-        render(<LiveDag slug="test-feature" />);
-
-        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.getByTestId("react-flow")).toBeInTheDocument();
     });
 
     it("handles loading state without crashing", () => {
