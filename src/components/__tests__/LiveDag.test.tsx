@@ -155,7 +155,7 @@ describe("LiveDag", () => {
         expect(mockUseSWR).toHaveBeenCalledWith(
             "/api/pipeline/user-profile-3",
             expect.any(Function),
-            expect.objectContaining({ refreshInterval: 3000 }),
+            expect.objectContaining({ refreshInterval: 3000, keepPreviousData: true }),
         );
     });
 
@@ -167,7 +167,7 @@ describe("LiveDag", () => {
         expect(mockUseSWR).toHaveBeenCalledWith(
             null,
             expect.any(Function),
-            expect.objectContaining({ refreshInterval: 3000 }),
+            expect.objectContaining({ refreshInterval: 3000, keepPreviousData: true }),
         );
     });
 });

@@ -50,7 +50,7 @@ export default function PipelineLaunchpad() {
     const { data: pipelines, isLoading } = useSWR<PipelineSummary[]>(
         "/api/pipelines",
         fetcher,
-        { refreshInterval: 5000 },
+        { refreshInterval: 5000, keepPreviousData: true },
     );
 
     if (isLoading) {

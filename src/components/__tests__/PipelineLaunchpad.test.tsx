@@ -116,7 +116,7 @@ describe("PipelineLaunchpad", () => {
         expect(mockUseSWR).toHaveBeenCalledWith(
             "/api/pipelines",
             expect.any(Function),
-            { refreshInterval: 5000 },
+            { refreshInterval: 5000, keepPreviousData: true },
         );
     });
 

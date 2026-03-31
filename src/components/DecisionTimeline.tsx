@@ -146,7 +146,7 @@ export default function DecisionTimeline({ slug }: DecisionTimelineProps) {
     const { data, isLoading } = useSWR<PipelineTelemetry>(
         slug ? `/api/pipeline/${encodeURIComponent(slug)}` : null,
         fetcher,
-        { refreshInterval: 3000 },
+        { refreshInterval: 3000, keepPreviousData: true },
     );
 
     const events = useMemo(() => {

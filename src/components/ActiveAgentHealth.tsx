@@ -98,7 +98,7 @@ export default function ActiveAgentHealth({ slug }: ActiveAgentHealthProps) {
     const { data, isLoading } = useSWR<PipelineTelemetry>(
         slug ? `/api/pipeline/${encodeURIComponent(slug)}` : null,
         fetcher,
-        { refreshInterval: 3000 },
+        { refreshInterval: 3000, keepPreviousData: true },
     );
 
     const flightData = useMemo(() => data?.flightData ?? [], [data]);
@@ -197,8 +197,8 @@ export default function ActiveAgentHealth({ slug }: ActiveAgentHealthProps) {
                         {health.badge && (
                             <span
                                 className={`inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${health.badge === "Hard Kill Initiated"
-                                        ? "bg-red-100 text-red-800"
-                                        : "bg-orange-100 text-orange-800"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-orange-100 text-orange-800"
                                     }`}
                                 data-testid="health-badge"
                             >

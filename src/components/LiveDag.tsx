@@ -145,7 +145,7 @@ export default function LiveDag({ slug }: LiveDagProps) {
     const { data, isLoading } = useSWR<PipelineTelemetry>(
         slug ? `/api/pipeline/${encodeURIComponent(slug)}` : null,
         fetcher,
-        { refreshInterval: 3000 },
+        { refreshInterval: 3000, keepPreviousData: true },
     );
 
     // Build a lookup map: item.key → PipelineStateItem
