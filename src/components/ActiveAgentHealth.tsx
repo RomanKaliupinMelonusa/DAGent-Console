@@ -167,11 +167,10 @@ export default function ActiveAgentHealth({ slug }: ActiveAgentHealthProps) {
                         {/* Badge */}
                         {health.badge && (
                             <span
-                                className={`inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                                    health.badge === "Hard Kill Initiated"
+                                className={`inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${health.badge === "Hard Kill Initiated"
                                         ? "bg-red-100 text-red-800"
                                         : "bg-orange-100 text-orange-800"
-                                }`}
+                                    }`}
                                 data-testid="health-badge"
                             >
                                 {health.badge}

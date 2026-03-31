@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import LiveDag from "@/components/LiveDag";
 import ActiveAgentHealth from "@/components/ActiveAgentHealth";
+import DecisionTimeline from "@/components/DecisionTimeline";
 
 export default async function Home({
   searchParams,
@@ -30,8 +31,18 @@ export default async function Home({
               </div>
             }
           >
-            <ActiveAgentHealth slug={pipeline} />
-            <LiveDag slug={pipeline} />
+            <div className="grid h-full grid-cols-1 lg:grid-cols-3">
+              {/* Left column — The Pulse */}
+              <div className="flex flex-col lg:col-span-2">
+                <ActiveAgentHealth slug={pipeline} />
+                <LiveDag slug={pipeline} />
+              </div>
+
+              {/* Right column — The Narrative */}
+              <div className="max-h-[800px] overflow-y-auto lg:border-l border-zinc-200 dark:border-zinc-800">
+                <DecisionTimeline slug={pipeline} />
+              </div>
+            </div>
           </Suspense>
         ) : (
           <div className="flex items-center justify-center h-full text-sm text-zinc-500">
