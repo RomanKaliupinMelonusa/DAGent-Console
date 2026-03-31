@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import LiveDag from "@/components/LiveDag";
+import ActiveAgentHealth from "@/components/ActiveAgentHealth";
 
 export default async function Home({
   searchParams,
@@ -29,6 +30,7 @@ export default async function Home({
               </div>
             }
           >
+            <ActiveAgentHealth slug={pipeline} />
             <LiveDag slug={pipeline} />
           </Suspense>
         ) : (
