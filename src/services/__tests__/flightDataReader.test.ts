@@ -1,6 +1,8 @@
 import { promises as fs } from "fs";
 import {
     getPipelineTelemetry,
+    getFlightDataMtime,
+    listPipelines,
     DEFAULT_STATE,
     DEFAULT_FLIGHT_DATA,
     DEFAULT_CHANGES,
@@ -14,10 +16,14 @@ import type {
 jest.mock("fs", () => ({
     promises: {
         readFile: jest.fn(),
+        readdir: jest.fn(),
+        stat: jest.fn(),
     },
 }));
 
 const mockReadFile = fs.readFile as jest.MockedFunction<typeof fs.readFile>;
+const mockReaddir = fs.readdir as jest.MockedFunction<typeof fs.readdir>;
+const mockStat = fs.stat as jest.MockedFunction<typeof fs.stat>;
 
 const SLUG = "add-login";
 
@@ -199,5 +205,144 @@ describe("getPipelineTelemetry", () => {
 
         const second = await getPipelineTelemetry(SLUG);
         expect(second.state.items).toEqual([]);
+    });
+});
+
+// =========================================================================
+// getFlightDataMtime
+// =========================================================================
+
+describe("getFlightDataMtime", () => {
+    it("returns ISO mtime when file exists", async () => {
+        const mtime = new Date("2026-03-31T12:00:00Z");
+        mockStat.mockResolvedValue({ mtime } as unknown as Awaited<ReturnType<typeof fs.stat>>);
+
+        const result = await getFlightDataMtime(SLUG);
+        expect(result).toBe(mtime.toISOString());
+    });
+
+    it("returns null when file does not exist", async () => {
+        mockStat.mockRejectedValue(
+            Object.assign(new Error("ENOENT"), { code: "ENOENT" }),
+        );
+        const result = await getFlightDataMtime(SLUG);
+        expect(result).toBeNull();
+    });
+
+    it("returns null for invalid slugs", async () => {
+        mockStat.mockClear();
+        const result = await getFlightDataMtime("../../etc/passwd");
+        expect(result).toBeNull();
+        expect(mockStat).not.toHaveBeenCalled();
+    });
+});
+
+// =========================================================================
+// listPipelines
+// =========================================================================
+
+describe("listPipelines", () => {
+    it("returns empty array when in-progress directory does not exist", async () => {
+        mockReaddir.mockRejectedValue(
+            Object.assign(new Error("ENOENT"), { code: "ENOENT" }),
+        );
+        const result = await listPipelines();
+        expect(result).toEqual([]);
+    });
+
+    it("discovers slugs from _STATE.json files and returns summaries", async () => {
+        mockReaddir.mockResolvedValue([
+            "feature-a_STATE.json",
+            "feature-a_FLIGHT_DATA.json",
+            "feature-b_STATE.json",
+            "README.md",
+        ] as unknown as Awaited<ReturnType<typeof fs.readdir>>);
+
+        const stateA: PipelineState = {
+            feature: "Feature A",
+            workflowType: "implement",
+            started: "2026-03-31T10:00:00Z",
+            deployedUrl: null,
+            implementationNotes: null,
+            items: [
+                { key: "plan", label: "Planning", agent: "planner", phase: "plan", status: "done", error: null },
+                { key: "code", label: "Coding", agent: "coder", phase: "implement", status: "active", error: null },
+            ],
+        };
+
+        const stateB: PipelineState = {
+            feature: "Feature B",
+            workflowType: "implement",
+            started: "2026-03-31T09:00:00Z",
+            deployedUrl: null,
+            implementationNotes: null,
+            items: [
+                { key: "plan", label: "Planning", agent: "planner", phase: "plan", status: "done", error: null },
+            ],
+        };
+
+        mockReadFile.mockImplementation(async (filePath) => {
+            const p = String(filePath);
+            if (p.endsWith("feature-a_STATE.json")) return JSON.stringify(stateA);
+            if (p.endsWith("feature-b_STATE.json")) return JSON.stringify(stateB);
+            if (p.endsWith("_FLIGHT_DATA.json")) return "[]";
+            throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+        });
+
+        const result = await listPipelines();
+
+        expect(result).toHaveLength(2);
+        // Active pipelines sort first
+        expect(result[0].slug).toBe("feature-a");
+        expect(result[0].overallStatus).toBe("active");
+        expect(result[0].activeStep).toBe("Coding");
+        expect(result[1].slug).toBe("feature-b");
+        expect(result[1].overallStatus).toBe("completed");
+    });
+
+    it("skips files with unsafe slug patterns", async () => {
+        mockReaddir.mockResolvedValue([
+            "good-slug_STATE.json",
+            "bad slug_STATE.json",
+            "../evil_STATE.json",
+        ] as unknown as Awaited<ReturnType<typeof fs.readdir>>);
+
+        mockReadFile.mockImplementation(async (filePath) => {
+            const p = String(filePath);
+            if (p.endsWith("good-slug_STATE.json")) return JSON.stringify(VALID_STATE);
+            if (p.endsWith("_FLIGHT_DATA.json")) return "[]";
+            throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+        });
+
+        const result = await listPipelines();
+        expect(result).toHaveLength(1);
+        expect(result[0].slug).toBe("good-slug");
+    });
+
+    it("derives 'failed' status when items have errors", async () => {
+        mockReaddir.mockResolvedValue([
+            "fail_STATE.json",
+        ] as unknown as Awaited<ReturnType<typeof fs.readdir>>);
+
+        const failedState: PipelineState = {
+            feature: "Failing Feature",
+            workflowType: "implement",
+            started: "2026-03-31T10:00:00Z",
+            deployedUrl: null,
+            implementationNotes: null,
+            items: [
+                { key: "code", label: "Coding", agent: "coder", phase: "implement", status: "done", error: "Playwright timeout" },
+            ],
+        };
+
+        mockReadFile.mockImplementation(async (filePath) => {
+            const p = String(filePath);
+            if (p.endsWith("fail_STATE.json")) return JSON.stringify(failedState);
+            if (p.endsWith("_FLIGHT_DATA.json")) return "[]";
+            throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+        });
+
+        const result = await listPipelines();
+        expect(result[0].overallStatus).toBe("failed");
     });
 });

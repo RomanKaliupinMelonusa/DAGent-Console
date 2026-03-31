@@ -30,6 +30,7 @@ import ActiveAgentHealth, {
     calculateTotalCost,
     getTotalToolCalls,
     getHealthStatus,
+    formatFreshness,
 } from "@/components/ActiveAgentHealth";
 
 // ---------------------------------------------------------------------------
@@ -387,5 +388,42 @@ describe("ActiveAgentHealth", () => {
             expect.any(Function),
             expect.objectContaining({ refreshInterval: 3000 }),
         );
+    });
+});
+
+// =========================================================================
+// formatFreshness tests
+// =========================================================================
+
+describe("formatFreshness", () => {
+    it("returns empty string for null", () => {
+        expect(formatFreshness(null)).toBe("");
+    });
+
+    it("returns empty string for undefined", () => {
+        expect(formatFreshness(undefined)).toBe("");
+    });
+
+    it("returns 'Updated just now' for recent timestamps", () => {
+        const now = new Date().toISOString();
+        expect(formatFreshness(now)).toBe("Updated just now");
+    });
+
+    it("returns seconds format for sub-minute timestamps", () => {
+        const thirtySecsAgo = new Date(Date.now() - 30_000).toISOString();
+        const result = formatFreshness(thirtySecsAgo);
+        expect(result).toMatch(/Updated \d+s ago/);
+    });
+
+    it("returns minutes format for sub-hour timestamps", () => {
+        const fiveMinsAgo = new Date(Date.now() - 5 * 60_000).toISOString();
+        const result = formatFreshness(fiveMinsAgo);
+        expect(result).toMatch(/Updated \d+m ago/);
+    });
+
+    it("returns hours format for older timestamps", () => {
+        const twoHoursAgo = new Date(Date.now() - 2 * 3600_000).toISOString();
+        const result = formatFreshness(twoHoursAgo);
+        expect(result).toMatch(/Updated \d+h ago/);
     });
 });

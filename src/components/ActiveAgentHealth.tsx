@@ -65,6 +65,17 @@ export function getHealthStatus(
     };
 }
 
+export function formatFreshness(lastModified: string | null | undefined): string {
+    if (!lastModified) return "";
+    const diff = Date.now() - new Date(lastModified).getTime();
+    const seconds = Math.floor(diff / 1000);
+    if (seconds < 5) return "Updated just now";
+    if (seconds < 60) return `Updated ${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `Updated ${minutes}m ago`;
+    return `Updated ${Math.floor(minutes / 60)}h ago`;
+}
+
 // ---------------------------------------------------------------------------
 // SWR fetcher
 // ---------------------------------------------------------------------------
@@ -92,6 +103,7 @@ export default function ActiveAgentHealth({ slug }: ActiveAgentHealthProps) {
 
     const flightData = useMemo(() => data?.flightData ?? [], [data]);
     const stateItems = useMemo(() => data?.state?.items ?? [], [data]);
+    const lastModified = data?.lastModified ?? null;
 
     const totalCost = useMemo(
         () => calculateTotalCost(flightData),
@@ -104,6 +116,7 @@ export default function ActiveAgentHealth({ slug }: ActiveAgentHealthProps) {
         [stateItems],
     );
 
+    // Match active step to flight data — also consider "in-progress" outcome entries
     const activeFlightItem = useMemo(
         () =>
             activeStateItem
@@ -119,6 +132,14 @@ export default function ActiveAgentHealth({ slug }: ActiveAgentHealthProps) {
     const health = getHealthStatus(toolCalls);
     const barWidth = Math.min((toolCalls / 40) * 100, 100);
 
+    // Determine freshness / staleness
+    const isActive = stateItems.some((i) => i.status === "active");
+    const freshness = formatFreshness(lastModified);
+    const isStale =
+        isActive && lastModified
+            ? new Date().getTime() - new Date(lastModified).getTime() > 30_000
+            : false;
+
     if (isLoading) {
         return (
             <div className="px-6 py-4 text-sm text-zinc-500">
@@ -129,11 +150,19 @@ export default function ActiveAgentHealth({ slug }: ActiveAgentHealthProps) {
 
     return (
         <div className="flex flex-col gap-4 border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
-            {/* Total Spend */}
+            {/* Total Spend + Freshness */}
             <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                     Total Spend: ${totalCost.toFixed(2)}
                 </span>
+                {freshness && (
+                    <span
+                        className={`text-xs ${isStale ? "text-amber-500" : "text-zinc-500"}`}
+                        data-testid="freshness-indicator"
+                    >
+                        {isStale ? "⏳ Waiting for heartbeat…" : freshness}
+                    </span>
+                )}
             </div>
 
             {/* Active Agent Frustration Meter */}

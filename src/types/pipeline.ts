@@ -30,7 +30,7 @@ export interface ItemSummary {
     startedAt: string;
     finishedAt: string;
     durationMs: number;
-    outcome: "completed" | "failed" | "error" | "skipped";
+    outcome: "completed" | "failed" | "error" | "skipped" | "in-progress";
     intents: string[];
     messages: string[];
     filesRead: string[];
@@ -68,4 +68,20 @@ export interface PipelineTelemetry {
     state: PipelineState;
     flightData: FlightData;
     changes: ChangeManifest;
+    lastModified?: string;
+}
+
+// ---------- Pipeline Discovery (Launchpad) ----------
+
+export type PipelineOverallStatus = "active" | "completed" | "failed";
+
+export interface PipelineSummary {
+    slug: string;
+    feature: string;
+    workflowType: string;
+    started: string;
+    overallStatus: PipelineOverallStatus;
+    lastActivity: string | null;
+    totalCost: number;
+    activeStep: string | null;
 }

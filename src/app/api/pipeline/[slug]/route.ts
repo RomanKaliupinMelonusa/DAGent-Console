@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getPipelineTelemetry } from "@/services/flightDataReader";
+import { getPipelineTelemetry, getFlightDataMtime } from "@/services/flightDataReader";
 
 export async function GET(
     _request: Request,
@@ -7,8 +7,11 @@ export async function GET(
 ) {
     try {
         const { slug } = await params;
-        const telemetry = await getPipelineTelemetry(slug);
-        return NextResponse.json(telemetry);
+        const [telemetry, lastModified] = await Promise.all([
+            getPipelineTelemetry(slug),
+            getFlightDataMtime(slug),
+        ]);
+        return NextResponse.json({ ...telemetry, lastModified });
     } catch {
         return NextResponse.json(
             { error: "Internal server error" },

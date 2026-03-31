@@ -22,6 +22,7 @@ export interface TimelineEvent {
     body: string | null;
     faultDomain?: string;
     diagnosticTrace?: string;
+    isStreaming?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -70,6 +71,7 @@ export function buildTimelineEvents(
                 stepKey: step.key,
                 title: `Intent: ${intent}`,
                 body: null,
+                isStreaming: step.outcome === "in-progress",
             });
         }
     }
@@ -194,11 +196,14 @@ export default function DecisionTimeline({ slug }: DecisionTimelineProps) {
 function IntentCard({ event }: { event: TimelineEvent }) {
     return (
         <div
-            className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900 dark:bg-blue-950"
+            className={`rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900 dark:bg-blue-950 ${event.isStreaming ? "animate-pulse" : ""}`}
             data-testid="intent-card"
         >
             <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
                 💡 {event.title}
+                {event.isStreaming && (
+                    <span className="ml-2 text-xs text-blue-500">● live</span>
+                )}
             </p>
             <p className="mt-0.5 text-xs text-blue-600 dark:text-blue-400">
                 {event.stepKey}
