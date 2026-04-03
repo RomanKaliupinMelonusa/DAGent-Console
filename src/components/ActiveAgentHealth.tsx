@@ -29,6 +29,18 @@ export function calculateTotalCost(flightData: FlightData): number {
     return total;
 }
 
+/**
+ * Extract the "Estimated cost" from the SUMMARY.md overview table.
+ * Returns null if not found.
+ */
+export function parseSummaryCost(summary: string | undefined | null): number | null {
+    if (!summary) return null;
+    const match = summary.match(/\*?\*?Estimated cost\*?\*?\s*\|\s*\*?\*?\$([0-9,.]+)\*?\*?/i);
+    if (!match) return null;
+    const value = parseFloat(match[1].replace(/,/g, ""));
+    return isNaN(value) ? null : value;
+}
+
 export function getTotalToolCalls(item: ItemSummary): number {
     return Object.values(item.toolCounts).reduce((sum, n) => sum + n, 0);
 }
@@ -104,23 +116,33 @@ export default function ActiveAgentHealth({ slug }: ActiveAgentHealthProps) {
     const flightData = useMemo(() => data?.flightData ?? [], [data]);
     const lastModified = data?.lastModified ?? null;
 
-    const totalCost = useMemo(
+    // Prefer the cumulative cost from SUMMARY.md; fall back to flight data
+    const summaryCost = useMemo(
+        () => parseSummaryCost(data?.markdownFiles?.summary),
+        [data],
+    );
+    const flightCost = useMemo(
         () => calculateTotalCost(flightData),
         [flightData],
     );
+    const totalCost = summaryCost ?? flightCost;
 
     // Active agents = flight data items with outcome "in-progress"
+    const agentLimits = data?.agentToolLimits;
     const activeAgents = useMemo(
         () =>
             flightData
                 .filter((f) => f.outcome === "in-progress")
                 .map((flightItem) => {
+                    const limits = agentLimits?.[flightItem.key];
+                    const softLimit = limits?.soft ?? 30;
+                    const hardLimit = limits?.hard ?? 40;
                     const toolCalls = getTotalToolCalls(flightItem);
-                    const health = getHealthStatus(toolCalls);
-                    const barWidth = Math.min((toolCalls / 40) * 100, 100);
-                    return { flightItem, toolCalls, health, barWidth };
+                    const health = getHealthStatus(toolCalls, softLimit, hardLimit);
+                    const barWidth = Math.min((toolCalls / hardLimit) * 100, 100);
+                    return { flightItem, toolCalls, health, barWidth, softLimit, hardLimit };
                 }),
-        [flightData],
+        [flightData, agentLimits],
     );
 
     // Determine freshness / staleness
@@ -158,14 +180,14 @@ export default function ActiveAgentHealth({ slug }: ActiveAgentHealthProps) {
 
             {/* Active Agent Frustration Meters */}
             {activeAgents.length > 0 ? (
-                activeAgents.map(({ flightItem, toolCalls, health, barWidth }) => (
+                activeAgents.map(({ flightItem, toolCalls, health, barWidth, hardLimit }) => (
                     <div key={flightItem.key} className="flex flex-col gap-2">
                         <div className="flex items-center justify-between text-sm">
                             <span className="font-medium text-zinc-700 dark:text-zinc-300">
                                 Active: {flightItem.label}
                             </span>
                             <span className={`font-mono text-xs ${health.color}`}>
-                                {toolCalls} / 40 tool calls
+                                {toolCalls} / {hardLimit} tool calls
                             </span>
                         </div>
 
@@ -175,7 +197,7 @@ export default function ActiveAgentHealth({ slug }: ActiveAgentHealthProps) {
                             role="progressbar"
                             aria-valuenow={toolCalls}
                             aria-valuemin={0}
-                            aria-valuemax={40}
+                            aria-valuemax={hardLimit}
                         >
                             <div
                                 className={`h-3 rounded-full transition-all ${health.barColor}`}

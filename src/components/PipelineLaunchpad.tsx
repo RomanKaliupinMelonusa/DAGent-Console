@@ -11,7 +11,10 @@ const fetcher = (url: string) =>
 
 function formatRelativeTime(iso: string): string {
     if (!iso) return "";
-    const diff = Date.now() - new Date(iso).getTime();
+    const parsed = new Date(iso);
+    if (isNaN(parsed.getTime())) return "";
+    const diff = Date.now() - parsed.getTime();
+    if (diff < 0) return "just now";
     const seconds = Math.floor(diff / 1000);
     if (seconds < 60) return `${seconds}s ago`;
     const minutes = Math.floor(seconds / 60);
@@ -22,26 +25,44 @@ function formatRelativeTime(iso: string): string {
     return `${days}d ago`;
 }
 
+function formatPipelineTime(summary: PipelineSummary): string {
+    // Prefer lastActivity (actual flight data timestamp) over started
+    const timestamp = summary.lastActivity || summary.started;
+    if (!timestamp) return "";
+    const parsed = new Date(timestamp);
+    if (isNaN(parsed.getTime())) return "";
+    const diff = Date.now() - parsed.getTime();
+    // If recent (< 1 hour), show relative
+    if (diff < 3600_000 && diff >= 0) return formatRelativeTime(timestamp);
+    // If today, show time only
+    const now = new Date();
+    if (parsed.toDateString() === now.toDateString()) {
+        return `Today ${parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    }
+    // Otherwise show short date
+    return parsed.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
 const STATUS_STYLES: Record<
     PipelineSummary["overallStatus"],
     { dot: string; bg: string; text: string; label: string }
 > = {
     active: {
         dot: "bg-blue-500 animate-pulse",
-        bg: "border-blue-500/30 bg-blue-950/20",
-        text: "text-blue-400",
+        bg: "border-blue-300 bg-blue-50 dark:border-blue-500/30 dark:bg-blue-950/20",
+        text: "text-blue-600 dark:text-blue-400",
         label: "Active",
     },
     completed: {
         dot: "bg-green-500",
-        bg: "border-green-500/30 bg-green-950/20",
-        text: "text-green-400",
+        bg: "border-green-300 bg-green-50 dark:border-green-500/30 dark:bg-green-950/20",
+        text: "text-green-600 dark:text-green-400",
         label: "Completed",
     },
     failed: {
         dot: "bg-red-500",
-        bg: "border-red-500/30 bg-red-950/20",
-        text: "text-red-400",
+        bg: "border-red-300 bg-red-50 dark:border-red-500/30 dark:bg-red-950/20",
+        text: "text-red-600 dark:text-red-400",
         label: "Failed",
     },
 };
@@ -84,7 +105,7 @@ export default function PipelineLaunchpad() {
                         d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162M3.75 17.25V9a2.25 2.25 0 0 1 2.25-2.25h12A2.25 2.25 0 0 1 20.25 9v8.25"
                     />
                 </svg>
-                <p className="text-sm">No pipelines found in <code className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-xs">in-progress/</code></p>
+                <p className="text-sm">No pipelines found in <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-xs dark:bg-zinc-800">in-progress/</code></p>
                 <p className="text-xs text-zinc-600">
                     Start an orchestrator run to see pipelines appear here.
                 </p>
@@ -95,7 +116,7 @@ export default function PipelineLaunchpad() {
     return (
         <div className="flex h-full flex-col p-6">
             <div className="mb-6">
-                <h2 className="text-lg font-semibold text-zinc-200">
+                <h2 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200">
                     Pipeline Launchpad
                 </h2>
                 <p className="mt-1 text-sm text-zinc-500">
@@ -116,7 +137,7 @@ export default function PipelineLaunchpad() {
                             {/* Header: status + feature name */}
                             <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0 flex-1">
-                                    <h3 className="truncate text-sm font-semibold text-zinc-100 group-hover:text-white">
+                                    <h3 className="truncate text-sm font-semibold text-zinc-800 group-hover:text-zinc-950 dark:text-zinc-100 dark:group-hover:text-white">
                                         {p.feature}
                                     </h3>
                                     <p className="mt-0.5 truncate font-mono text-xs text-zinc-500">
@@ -133,8 +154,8 @@ export default function PipelineLaunchpad() {
 
                             {/* Active step */}
                             {p.activeStep && (
-                                <p className="text-xs text-zinc-400">
-                                    <span className="font-medium text-zinc-300">Active:</span>{" "}
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    <span className="font-medium text-zinc-700 dark:text-zinc-300">Active:</span>{" "}
                                     {p.activeStep}
                                 </p>
                             )}
@@ -145,14 +166,12 @@ export default function PipelineLaunchpad() {
                                     ${p.totalCost.toFixed(2)}
                                 </span>
                                 <span>
-                                    {p.started
-                                        ? formatRelativeTime(p.started)
-                                        : "—"}
+                                    {formatPipelineTime(p) || "—"}
                                 </span>
                             </div>
 
                             {/* CTA */}
-                            <div className="text-xs font-medium text-zinc-400 group-hover:text-zinc-200">
+                            <div className="text-xs font-medium text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200">
                                 Open Dashboard →
                             </div>
                         </a>

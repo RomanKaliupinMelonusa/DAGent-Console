@@ -128,7 +128,7 @@ describe("LiveDag", () => {
             makeItem("frontend-dev", "done"),
             makeItem("code-cleanup", "done"),
             makeItem("docs-archived", "done"),
-            makeItem("create-pr", "done"),
+            makeItem("publish-pr", "done"),
         ]);
 
         mockUseSWR.mockReturnValue({ data, isLoading: false });

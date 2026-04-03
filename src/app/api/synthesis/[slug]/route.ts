@@ -2,9 +2,19 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import path from "path";
 import { CopilotClient, approveAll } from "@github/copilot-sdk";
 import { getPipelineTelemetry, getSpecMarkdown } from "@/services/flightDataReader";
 import { compressFlightData } from "@/services/synthesisHelpers";
+
+// Resolve the CLI path at module load time so Turbopack's cwd doesn't matter
+const CLI_PATH = path.join(
+    process.cwd(),
+    "node_modules",
+    "@github",
+    "copilot",
+    "npm-loader.js",
+);
 
 const SYSTEM_PROMPT =
     "You are an Engineering Director analyzing an autonomous agent's execution logs. " +
@@ -41,7 +51,7 @@ export async function POST(
             JSON.stringify(telemetry.changes),
         ].join("\n");
 
-        client = new CopilotClient();
+        client = new CopilotClient({ cliPath: CLI_PATH });
         await client.start();
 
         const session = await client.createSession({
@@ -54,17 +64,64 @@ export async function POST(
             infiniteSessions: { enabled: false },
         });
 
-        const response = await session.sendAndWait({ prompt: userMessage });
+        // Use sendAndWait — the SDK's reliable request/response API
+        const response = await session.sendAndWait(
+            { prompt: userMessage },
+            120_000, // 2 min timeout
+        );
 
-        await session.disconnect();
+        const content = response?.data?.content ?? "";
 
-        const markdown = response?.data?.content ?? "";
+        // Clean up SDK resources
+        await session.disconnect().catch(() => { });
+        await client.stop().catch(() => { });
+        client = null;
 
-        return NextResponse.json({ markdown });
-    } catch {
+        if (!content) {
+            return NextResponse.json(
+                { error: "Synthesis returned empty response" },
+                { status: 502 },
+            );
+        }
+
+        // Stream the content as SSE chunks for progressive rendering
+        const encoder = new TextEncoder();
+        const CHUNK_SIZE = 80;
+        const stream = new ReadableStream({
+            start(controller) {
+                let offset = 0;
+                const interval = setInterval(() => {
+                    if (offset >= content.length) {
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
+                        controller.close();
+                        clearInterval(interval);
+                        return;
+                    }
+                    const chunk = content.slice(offset, offset + CHUNK_SIZE);
+                    offset += CHUNK_SIZE;
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta: chunk })}\n\n`));
+                }, 20);
+            },
+        });
+
+        return new Response(stream, {
+            headers: {
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                Connection: "keep-alive",
+            },
+        });
+    } catch (err) {
+        console.error("[synthesis] Error:", err);
+        const message = err instanceof Error ? err.message : "Unknown error";
+        const isAuthError = message.includes("authentication") || message.includes("auth");
         return NextResponse.json(
-            { error: "Synthesis failed" },
-            { status: 500 },
+            {
+                error: isAuthError
+                    ? "GitHub Copilot authentication required. Run `gh auth login` or set GITHUB_TOKEN."
+                    : `Synthesis failed: ${message}`,
+            },
+            { status: isAuthError ? 401 : 500 },
         );
     } finally {
         if (client) {

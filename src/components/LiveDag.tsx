@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     ReactFlow,
     Background,
@@ -27,41 +27,55 @@ interface DagNodeDef {
 }
 
 // ---------------------------------------------------------------------------
-// Static topology — matches the validated pipeline DAG contract
+// ---------------------------------------------------------------------------
+// Static topology — matches the real pipeline DAG
 // ---------------------------------------------------------------------------
 
-// Pre-deploy — schema first, then parallel dev + test, converge to cleanup
-const PRE_DEPLOY_NODES: DagNodeDef[] = [
+// Infra phase — schema → infra-architect → push → plan → draft PR
+const INFRA_NODES: DagNodeDef[] = [
     { id: "schema-dev", defaultLabel: "Schema Dev", position: { x: 300, y: 0 } },
-    { id: "backend-dev", defaultLabel: "Backend Dev", position: { x: 150, y: 100 } },
-    { id: "frontend-dev", defaultLabel: "Frontend Dev", position: { x: 450, y: 100 } },
-    { id: "backend-unit-test", defaultLabel: "Backend Unit Test", position: { x: 150, y: 200 } },
-    { id: "frontend-unit-test", defaultLabel: "Frontend Unit Test", position: { x: 450, y: 200 } },
-    { id: "code-cleanup", defaultLabel: "Code Cleanup", position: { x: 300, y: 300 } },
+    { id: "infra-architect", defaultLabel: "Infra Architect", position: { x: 300, y: 100 } },
+    { id: "push-infra", defaultLabel: "Push Infra", position: { x: 300, y: 200 } },
+    { id: "poll-infra-plan", defaultLabel: "Poll Infra Plan", position: { x: 300, y: 300 } },
+    { id: "create-draft-pr", defaultLabel: "Create Draft PR", position: { x: 300, y: 400 } },
 ];
 
-// Deploy — sequential push → plan → draft PR → push app → poll CI
+// Approval phase — await approval → infra handoff
+const APPROVAL_NODES: DagNodeDef[] = [
+    { id: "await-infra-approval", defaultLabel: "Infra Approval", position: { x: 300, y: 500 } },
+    { id: "infra-handoff", defaultLabel: "Infra Handoff", position: { x: 300, y: 600 } },
+];
+
+// Pre-deploy — parallel dev + test, converge to cleanup
+const PRE_DEPLOY_NODES: DagNodeDef[] = [
+    { id: "backend-dev", defaultLabel: "Backend Dev", position: { x: 150, y: 720 } },
+    { id: "frontend-dev", defaultLabel: "Frontend Dev", position: { x: 450, y: 720 } },
+    { id: "backend-unit-test", defaultLabel: "Backend Unit Test", position: { x: 150, y: 820 } },
+    { id: "frontend-unit-test", defaultLabel: "Frontend Unit Test", position: { x: 450, y: 820 } },
+    { id: "code-cleanup", defaultLabel: "Code Cleanup", position: { x: 300, y: 920 } },
+];
+
+// Deploy — push app → poll CI
 const DEPLOY_NODES: DagNodeDef[] = [
-    { id: "push-infra", defaultLabel: "Push Infra", position: { x: 300, y: 420 } },
-    { id: "poll-infra-plan", defaultLabel: "Poll Infra Plan", position: { x: 300, y: 520 } },
-    { id: "create-draft-pr", defaultLabel: "Create Draft PR", position: { x: 300, y: 620 } },
-    { id: "push-app", defaultLabel: "Push App", position: { x: 300, y: 720 } },
-    { id: "poll-app-ci", defaultLabel: "Poll App CI", position: { x: 300, y: 820 } },
+    { id: "push-app", defaultLabel: "Push App", position: { x: 300, y: 1040 } },
+    { id: "poll-app-ci", defaultLabel: "Poll App CI", position: { x: 300, y: 1140 } },
 ];
 
 // Post-deploy — parallel integration test + live UI
 const POST_DEPLOY_NODES: DagNodeDef[] = [
-    { id: "live-ui", defaultLabel: "Live UI", position: { x: 150, y: 940 } },
-    { id: "integration-test", defaultLabel: "Integration Test", position: { x: 450, y: 940 } },
+    { id: "live-ui", defaultLabel: "Live UI", position: { x: 150, y: 1260 } },
+    { id: "integration-test", defaultLabel: "Integration Test", position: { x: 450, y: 1260 } },
 ];
 
-// Finalize — docs + create PR
+// Finalize — docs + publish PR
 const FINALIZE_NODES: DagNodeDef[] = [
-    { id: "docs-archived", defaultLabel: "Docs Archived", position: { x: 300, y: 1060 } },
-    { id: "create-pr", defaultLabel: "Create PR", position: { x: 300, y: 1160 } },
+    { id: "docs-archived", defaultLabel: "Docs Archived", position: { x: 300, y: 1380 } },
+    { id: "publish-pr", defaultLabel: "Publish PR", position: { x: 300, y: 1480 } },
 ];
 
 const ALL_NODE_DEFS: DagNodeDef[] = [
+    ...INFRA_NODES,
+    ...APPROVAL_NODES,
     ...PRE_DEPLOY_NODES,
     ...DEPLOY_NODES,
     ...POST_DEPLOY_NODES,
@@ -69,33 +83,40 @@ const ALL_NODE_DEFS: DagNodeDef[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Static edges — contract-defined DAG order
+// Static edges — DAG order
 // ---------------------------------------------------------------------------
 
 const STATIC_EDGES: Edge[] = [
-    // Pre-deploy: schema → parallel dev → parallel test → cleanup
-    { id: "e-schema-dev->backend-dev", source: "schema-dev", target: "backend-dev" },
-    { id: "e-schema-dev->frontend-dev", source: "schema-dev", target: "frontend-dev" },
+    // Infra: schema → infra-architect → push → plan → draft PR
+    { id: "e-schema-dev->infra-architect", source: "schema-dev", target: "infra-architect" },
+    { id: "e-infra-architect->push-infra", source: "infra-architect", target: "push-infra" },
+    { id: "e-push-infra->poll-infra-plan", source: "push-infra", target: "poll-infra-plan" },
+    { id: "e-poll-infra-plan->create-draft-pr", source: "poll-infra-plan", target: "create-draft-pr" },
+
+    // Approval: draft PR → await approval → infra handoff
+    { id: "e-create-draft-pr->await-infra-approval", source: "create-draft-pr", target: "await-infra-approval" },
+    { id: "e-await-infra-approval->infra-handoff", source: "await-infra-approval", target: "infra-handoff" },
+
+    // Pre-deploy: infra-handoff → parallel dev → parallel test → cleanup
+    { id: "e-infra-handoff->backend-dev", source: "infra-handoff", target: "backend-dev" },
+    { id: "e-infra-handoff->frontend-dev", source: "infra-handoff", target: "frontend-dev" },
     { id: "e-backend-dev->backend-unit-test", source: "backend-dev", target: "backend-unit-test" },
     { id: "e-frontend-dev->frontend-unit-test", source: "frontend-dev", target: "frontend-unit-test" },
     { id: "e-backend-unit-test->code-cleanup", source: "backend-unit-test", target: "code-cleanup" },
     { id: "e-frontend-unit-test->code-cleanup", source: "frontend-unit-test", target: "code-cleanup" },
 
-    // Deploy: sequential push-infra → plan → draft PR → push-app → poll CI
-    { id: "e-code-cleanup->push-infra", source: "code-cleanup", target: "push-infra" },
-    { id: "e-push-infra->poll-infra-plan", source: "push-infra", target: "poll-infra-plan" },
-    { id: "e-poll-infra-plan->create-draft-pr", source: "poll-infra-plan", target: "create-draft-pr" },
-    { id: "e-create-draft-pr->push-app", source: "create-draft-pr", target: "push-app" },
+    // Deploy: cleanup → push-app → poll CI
+    { id: "e-code-cleanup->push-app", source: "code-cleanup", target: "push-app" },
     { id: "e-push-app->poll-app-ci", source: "push-app", target: "poll-app-ci" },
 
     // Post-deploy: parallel live-ui + integration-test
     { id: "e-poll-app-ci->live-ui", source: "poll-app-ci", target: "live-ui" },
     { id: "e-poll-app-ci->integration-test", source: "poll-app-ci", target: "integration-test" },
 
-    // Finalize: converge → docs → create-pr
+    // Finalize: converge → docs → publish-pr
     { id: "e-live-ui->docs-archived", source: "live-ui", target: "docs-archived" },
     { id: "e-integration-test->docs-archived", source: "integration-test", target: "docs-archived" },
-    { id: "e-docs-archived->create-pr", source: "docs-archived", target: "create-pr" },
+    { id: "e-docs-archived->publish-pr", source: "docs-archived", target: "publish-pr" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -157,6 +178,9 @@ const fetcher = (url: string) =>
 // ---------------------------------------------------------------------------
 
 export default function LiveDag({ slug }: LiveDagProps) {
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+
     const { data, isLoading } = useSWR<PipelineTelemetry>(
         slug ? `/api/pipeline/${encodeURIComponent(slug)}` : null,
         fetcher,
@@ -212,6 +236,14 @@ export default function LiveDag({ slug }: LiveDagProps) {
             };
         });
     }, [itemMap, flightMap]);
+
+    if (!mounted) {
+        return (
+            <div className="flex items-center justify-center h-full text-sm text-zinc-500">
+                Loading DAG…
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-full w-full">

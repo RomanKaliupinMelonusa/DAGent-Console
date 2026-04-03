@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import ThemeToggle from "@/components/ThemeToggle";
 import LiveDag from "@/components/LiveDag";
 import ActiveAgentHealth from "@/components/ActiveAgentHealth";
 import DecisionTimeline from "@/components/DecisionTimeline";
@@ -15,14 +16,14 @@ export default async function Home({
   const pipeline = typeof params.pipeline === "string" ? params.pipeline : "";
 
   return (
-    <div className="flex flex-col h-full w-full">
-      <header className="flex items-center gap-4 border-b border-zinc-200 px-6 py-3 dark:border-zinc-800">
+    <div className="flex flex-col h-full min-h-screen w-full">
+      <header className="flex shrink-0 items-center gap-4 border-b border-zinc-200 px-6 py-3 dark:border-zinc-800">
         <h1 className="text-lg font-bold tracking-tight">DAGent Console</h1>
         {pipeline ? (
           <div className="flex items-center gap-2">
             <Link
               href="/"
-              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+              className="text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300 transition-colors"
             >
               ← Launchpad
             </Link>
@@ -32,6 +33,7 @@ export default async function Home({
             </span>
           </div>
         ) : null}
+        <ThemeToggle />
       </header>
 
       <main className="flex-1 min-h-0">

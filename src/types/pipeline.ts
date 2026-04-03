@@ -98,6 +98,10 @@ export interface PipelineTelemetry {
         playwrightLog?: string;
         transitionLog?: string;
     };
+    /** Per-agent tool limits from apm.yml. */
+    agentToolLimits?: Record<string, { soft: number; hard: number }>;
+    /** Global token budget from apm.yml. */
+    tokenBudget?: number;
 }
 
 // ---------- Pipeline Discovery (Launchpad) ----------

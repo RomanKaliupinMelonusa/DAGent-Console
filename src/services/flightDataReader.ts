@@ -100,6 +100,71 @@ async function readTextFile(filePaths: string | string[], fallback: string): Pro
     return fallback;
 }
 
+// ---------------------------------------------------------------------------
+// APM config (apm.yml) — agent tool limits + token budget
+// ---------------------------------------------------------------------------
+
+interface ApmAgentConfig {
+    toolLimits?: { soft: number; hard: number };
+}
+
+interface ApmConfig {
+    tokenBudget?: number;
+    agents?: Record<string, ApmAgentConfig>;
+    config?: { defaultToolLimits?: { soft: number; hard: number } };
+}
+
+let apmConfigCache: { data: ApmConfig; mtime: number } | null = null;
+
+async function readApmConfig(): Promise<ApmConfig> {
+    const base = process.env.TARGET_APP_PATH ?? "";
+    const apmPath = path.join(base, ".apm", "apm.yml");
+    try {
+        const stat = await fs.stat(apmPath);
+        if (apmConfigCache && apmConfigCache.mtime === stat.mtimeMs) {
+            return apmConfigCache.data;
+        }
+        const raw = await fs.readFile(apmPath, "utf-8");
+        // Simple YAML parser — enough for apm.yml structure
+        const config = parseSimpleApmYaml(raw);
+        apmConfigCache = { data: config, mtime: stat.mtimeMs };
+        return config;
+    } catch {
+        return {};
+    }
+}
+
+function parseSimpleApmYaml(raw: string): ApmConfig {
+    const result: ApmConfig = { agents: {} };
+
+    // Extract tokenBudget
+    const budgetMatch = raw.match(/^tokenBudget:\s*(\d+)/m);
+    if (budgetMatch) result.tokenBudget = parseInt(budgetMatch[1], 10);
+
+    // Extract defaultToolLimits from config section
+    const defaultMatch = raw.match(/defaultToolLimits:\s*\{\s*soft:\s*(\d+)\s*,\s*hard:\s*(\d+)\s*\}/);
+    if (defaultMatch) {
+        result.config = { defaultToolLimits: { soft: parseInt(defaultMatch[1], 10), hard: parseInt(defaultMatch[2], 10) } };
+    }
+
+    // Extract per-agent toolLimits
+    const agentSection = raw.indexOf("\nagents:");
+    if (agentSection === -1) return result;
+
+    const agentBlock = raw.slice(agentSection);
+    const agentRegex = /^ {2}([a-zA-Z0-9_-]+):\n(?:[\s\S]*?)toolLimits:\s*\{\s*soft:\s*(\d+)\s*,\s*hard:\s*(\d+)\s*\}/gm;
+    let match;
+    while ((match = agentRegex.exec(agentBlock)) !== null) {
+        result.agents![match[1]] = {
+            toolLimits: { soft: parseInt(match[2], 10), hard: parseInt(match[3], 10) },
+        };
+    }
+
+    return result;
+}
+
+export { parseSimpleApmYaml };
+
 export async function getPipelineTelemetry(
     slug: string,
 ): Promise<PipelineTelemetry> {
@@ -111,7 +176,7 @@ export async function getPipelineTelemetry(
         };
     }
 
-    const [state, flightData, changes, summary, terminalLog, playwrightLog, transitionLog] =
+    const [state, flightData, changes, summary, terminalLog, playwrightLog, transitionLog, apmConfig] =
         await Promise.all([
             readJsonFile<PipelineState>(
                 candidatePaths(slug, `${slug}_STATE.json`),
@@ -128,7 +193,17 @@ export async function getPipelineTelemetry(
             readTextFile(candidatePaths(slug, `${slug}_TERMINAL-LOG.md`), ""),
             readTextFile(candidatePaths(slug, `${slug}_PLAYWRIGHT-LOG.md`), ""),
             readTextFile(candidatePaths(slug, `${slug}_TRANS.md`), ""),
+            readApmConfig(),
         ]);
+
+    // Build per-agent tool limits map
+    const agentToolLimits: Record<string, { soft: number; hard: number }> = {};
+    const defaultLimits = apmConfig.config?.defaultToolLimits ?? { soft: 30, hard: 40 };
+    if (apmConfig.agents) {
+        for (const [key, agent] of Object.entries(apmConfig.agents)) {
+            agentToolLimits[key] = agent.toolLimits ?? defaultLimits;
+        }
+    }
 
     return {
         state,
@@ -140,6 +215,8 @@ export async function getPipelineTelemetry(
             playwrightLog: playwrightLog || undefined,
             transitionLog: transitionLog || undefined,
         },
+        agentToolLimits: Object.keys(agentToolLimits).length > 0 ? agentToolLimits : undefined,
+        tokenBudget: apmConfig.tokenBudget,
     };
 }
 

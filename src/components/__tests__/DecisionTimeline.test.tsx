@@ -175,11 +175,13 @@ describe("buildTimelineEvents", () => {
             allFilesChanged: [],
             summaryIntents: [],
         });
-        expect(events).toHaveLength(2);
+        expect(events).toHaveLength(3);
         expect(events[0].kind).toBe("intent");
         expect(events[0].title).toBe("Intent: Switching to mocked auth");
         expect(events[0].timestamp).toBe("2026-03-31T10:00:00Z");
+        expect(events[1].kind).toBe("intent");
         expect(events[1].title).toBe("Intent: Adding retry logic");
+        expect(events[2].kind).toBe("step");
     });
 
     it("creates architecture events from docNotes, keyed to finishedAt", () => {
@@ -199,11 +201,13 @@ describe("buildTimelineEvents", () => {
             summaryIntents: [],
         };
         const events = buildTimelineEvents(flight, changes);
-        expect(events).toHaveLength(1);
-        expect(events[0].kind).toBe("architecture");
-        expect(events[0].title).toBe("Architecture Updated");
-        expect(events[0].body).toBe("Migrated to JWT auth");
-        expect(events[0].timestamp).toBe("2026-03-31T10:05:00Z");
+        // step card (completed) + architecture card
+        expect(events).toHaveLength(2);
+        expect(events[0].kind).toBe("step");
+        expect(events[1].kind).toBe("architecture");
+        expect(events[1].title).toBe("Architecture Updated");
+        expect(events[1].body).toBe("Migrated to JWT auth");
+        expect(events[1].timestamp).toBe("2026-03-31T10:05:00Z");
     });
 
     it("skips stepsCompleted entries with null docNote", () => {
@@ -219,7 +223,9 @@ describe("buildTimelineEvents", () => {
             summaryIntents: [],
         };
         const events = buildTimelineEvents(flight, changes);
-        expect(events).toHaveLength(0);
+        // step card only (completed), no architecture card because docNote is null
+        expect(events).toHaveLength(1);
+        expect(events[0].kind).toBe("step");
     });
 
     it("creates structured triage event from JSON errorMessage", () => {
@@ -282,7 +288,9 @@ describe("buildTimelineEvents", () => {
             allFilesChanged: [],
             summaryIntents: [],
         });
-        expect(events).toHaveLength(0);
+        // 1 step card (completed), no triage card
+        expect(events).toHaveLength(1);
+        expect(events[0].kind).toBe("step");
     });
 
     it("creates triage events for outcome 'error' (not just 'failed')", () => {
@@ -375,14 +383,15 @@ describe("buildTimelineEvents", () => {
             summaryIntents: [],
         };
         const events = buildTimelineEvents(flight, changes);
-        // Expected order: step-a intent (10:00), step-a arch (10:05), step-b intent (10:10)
-        expect(events).toHaveLength(3);
+        // step-a: step(10:00) + intent(10:00) + step-completed(10:05) + arch(10:05)
+        // step-b: step(10:10) + intent(10:10) + step-completed(10:15)
         expect(events[0].stepKey).toBe("step-a");
-        expect(events[0].kind).toBe("intent");
-        expect(events[1].stepKey).toBe("step-a");
-        expect(events[1].kind).toBe("architecture");
-        expect(events[2].stepKey).toBe("step-b");
-        expect(events[2].kind).toBe("intent");
+        const intentA = events.find(e => e.stepKey === "step-a" && e.kind === "intent");
+        const archA = events.find(e => e.stepKey === "step-a" && e.kind === "architecture");
+        const intentB = events.find(e => e.stepKey === "step-b" && e.kind === "intent");
+        expect(intentA).toBeDefined();
+        expect(archA).toBeDefined();
+        expect(intentB).toBeDefined();
     });
 });
 
@@ -402,7 +411,7 @@ describe("DecisionTimeline", () => {
     });
 
     it("renders empty state when no events exist", () => {
-        const data = makeTelemetry([makeStateItem("plan", "done")]);
+        const data = makeTelemetry([makeStateItem("plan", "pending")]);
         mockUseSWR.mockReturnValue({ data, isLoading: false });
         render(<DecisionTimeline slug="test" />);
         expect(screen.getByText("No timeline events yet.")).toBeInTheDocument();

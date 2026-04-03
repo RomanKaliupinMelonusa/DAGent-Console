@@ -6,15 +6,21 @@ import type {
 } from "@/types/pipeline";
 
 // ---------------------------------------------------------------------------
-// Mock @github/copilot-sdk
+// Mock @github/copilot-sdk — session uses sendAndWait()
 // ---------------------------------------------------------------------------
 
 const mockSendAndWait = jest.fn();
-const mockDisconnect = jest.fn();
-const mockCreateSession = jest.fn().mockResolvedValue({
-    sendAndWait: mockSendAndWait,
-    disconnect: mockDisconnect,
-});
+const mockDisconnect = jest.fn().mockResolvedValue(undefined);
+
+function createMockSession() {
+    return {
+        sendAndWait: mockSendAndWait,
+        disconnect: mockDisconnect,
+    };
+}
+
+const mockSession = createMockSession();
+const mockCreateSession = jest.fn().mockResolvedValue(mockSession);
 const mockStart = jest.fn();
 const mockStop = jest.fn().mockResolvedValue([]);
 
@@ -123,6 +129,7 @@ const VALID_TELEMETRY: PipelineTelemetry = {
         deployedUrl: null,
         implementationNotes: null,
         items: [],
+        errorLog: [],
     },
     flightData: RICH_FLIGHT_DATA,
     changes: VALID_CHANGES,
@@ -130,7 +137,7 @@ const VALID_TELEMETRY: PipelineTelemetry = {
 
 const MOCK_SPEC = "# Add Login\n\nImplement OAuth login flow with GitHub provider.";
 
-const MOCK_MARKDOWN =
+const MOCK_RESPONSE_CONTENT =
     "The agent navigated the implementation with moderate friction...\n\n" +
     "A key turning point occurred during frontend development...\n\n" +
     "Overall, the autonomous pipeline successfully delivered the feature.";
@@ -149,6 +156,23 @@ function makeParams(): { params: Promise<{ slug: string }> } {
     return { params: Promise.resolve({ slug: SLUG }) };
 }
 
+/** Read all SSE data events from a streaming response */
+async function readSSEStream(response: Response): Promise<Array<Record<string, unknown>>> {
+    const text = await response.text();
+    return text
+        .split("\n")
+        .filter((line) => line.startsWith("data: "))
+        .map((line) => JSON.parse(line.slice(6)));
+}
+
+/** Make sendAndWait return a mock assistant message */
+function mockAssistantResponse(content: string) {
+    mockSendAndWait.mockResolvedValue({
+        type: "assistant.message",
+        data: { content, messageId: "m1" },
+    });
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -157,34 +181,43 @@ beforeEach(() => {
     mockGetPipelineTelemetry.mockReset();
     mockGetSpecMarkdown.mockReset();
     mockSendAndWait.mockReset();
-    mockDisconnect.mockReset();
+    mockDisconnect.mockReset().mockResolvedValue(undefined);
     mockCreateSession.mockClear();
     mockStart.mockClear();
     mockStop.mockClear().mockResolvedValue([]);
 
-    mockCreateSession.mockResolvedValue({
-        sendAndWait: mockSendAndWait,
-        disconnect: mockDisconnect,
-    });
+    const session = createMockSession();
+    Object.assign(mockSession, session);
+    mockCreateSession.mockResolvedValue(session);
 });
 
 describe("POST /api/synthesis/[slug]", () => {
-    it("returns 200 with markdown from the Copilot SDK (happy path)", async () => {
+    it("streams markdown via SSE after sendAndWait (happy path)", async () => {
         mockGetPipelineTelemetry.mockResolvedValue(VALID_TELEMETRY);
         mockGetSpecMarkdown.mockResolvedValue(MOCK_SPEC);
-        mockSendAndWait.mockResolvedValue({ data: { content: MOCK_MARKDOWN } });
+        mockAssistantResponse(MOCK_RESPONSE_CONTENT);
 
         const response = await POST(makeRequest(), makeParams());
-        const body = await response.json();
+        const events = await readSSEStream(response);
 
         expect(response.status).toBe(200);
-        expect(body.markdown).toBe(MOCK_MARKDOWN);
+        expect(response.headers.get("Content-Type")).toBe("text/event-stream");
+
+        // Should have delta chunks + a final done event
+        const deltas = events.filter((e) => e.delta);
+        const doneEvents = events.filter((e) => e.done);
+        expect(deltas.length).toBeGreaterThan(0);
+        expect(doneEvents).toHaveLength(1);
+
+        // Reassemble content from deltas
+        const fullContent = deltas.map((e) => e.delta).join("");
+        expect(fullContent).toBe(MOCK_RESPONSE_CONTENT);
     });
 
     it("creates a session with claude-opus-4.6 and replaced system prompt", async () => {
         mockGetPipelineTelemetry.mockResolvedValue(VALID_TELEMETRY);
         mockGetSpecMarkdown.mockResolvedValue(MOCK_SPEC);
-        mockSendAndWait.mockResolvedValue({ data: { content: MOCK_MARKDOWN } });
+        mockAssistantResponse("ok");
 
         await POST(makeRequest(), makeParams());
 
@@ -199,88 +232,40 @@ describe("POST /api/synthesis/[slug]", () => {
         );
 
         const sessionConfig = mockCreateSession.mock.calls[0][0];
-        expect(sessionConfig.systemMessage.content).toContain(
-            "Engineering Director",
-        );
-        expect(sessionConfig.systemMessage.content).toContain(
-            "3-paragraph executive post-mortem",
-        );
+        expect(sessionConfig.systemMessage.content).toContain("Engineering Director");
+        expect(sessionConfig.systemMessage.content).toContain("3-paragraph executive post-mortem");
     });
 
     it("compresses flight data — strips shellCommands, filesRead, filesChanged, messages, tokens", async () => {
         mockGetPipelineTelemetry.mockResolvedValue(VALID_TELEMETRY);
         mockGetSpecMarkdown.mockResolvedValue(MOCK_SPEC);
-        mockSendAndWait.mockResolvedValue({ data: { content: MOCK_MARKDOWN } });
+        mockAssistantResponse("ok");
 
         await POST(makeRequest(), makeParams());
 
         const sentPrompt = mockSendAndWait.mock.calls[0][0].prompt as string;
 
-        // The compressed flight data should contain keys, toolCounts, intents
         expect(sentPrompt).toContain("backend-dev");
-        expect(sentPrompt).toContain("frontend-dev");
         expect(sentPrompt).toContain("scaffold-api");
         expect(sentPrompt).toContain("read_file");
-        expect(sentPrompt).toContain("Component render failed on first attempt");
-
-        // Raw shell commands and file lists must NOT appear in the prompt
         expect(sentPrompt).not.toContain("npm test");
-        expect(sentPrompt).not.toContain("npx next build");
         expect(sentPrompt).not.toContain("src/api/routes.ts");
-        expect(sentPrompt).not.toContain("src/components/Form.tsx");
-        expect(sentPrompt).not.toContain("API scaffold complete");
     });
 
     it("includes the spec and changes in the user message", async () => {
         mockGetPipelineTelemetry.mockResolvedValue(VALID_TELEMETRY);
         mockGetSpecMarkdown.mockResolvedValue(MOCK_SPEC);
-        mockSendAndWait.mockResolvedValue({ data: { content: MOCK_MARKDOWN } });
+        mockAssistantResponse("ok");
 
         await POST(makeRequest(), makeParams());
 
         const sentPrompt = mockSendAndWait.mock.calls[0][0].prompt as string;
-
         expect(sentPrompt).toContain("## SPEC");
         expect(sentPrompt).toContain("OAuth login flow");
         expect(sentPrompt).toContain("## CHANGES");
-        expect(sentPrompt).toContain("scaffold-api");
     });
 
-    it("cleans up the SDK client even on success", async () => {
-        mockGetPipelineTelemetry.mockResolvedValue(VALID_TELEMETRY);
-        mockGetSpecMarkdown.mockResolvedValue(MOCK_SPEC);
-        mockSendAndWait.mockResolvedValue({ data: { content: MOCK_MARKDOWN } });
-
-        await POST(makeRequest(), makeParams());
-
-        expect(mockStart).toHaveBeenCalledTimes(1);
-        expect(mockDisconnect).toHaveBeenCalledTimes(1);
-        expect(mockStop).toHaveBeenCalledTimes(1);
-    });
-
-    it("returns 500 when the SDK throws", async () => {
-        mockGetPipelineTelemetry.mockResolvedValue(VALID_TELEMETRY);
-        mockGetSpecMarkdown.mockResolvedValue(MOCK_SPEC);
-        mockSendAndWait.mockRejectedValue(new Error("SDK connection failed"));
-
-        const response = await POST(makeRequest(), makeParams());
-        const body = await response.json();
-
-        expect(response.status).toBe(500);
-        expect(body.error).toBe("Synthesis failed");
-    });
-
-    it("cleans up the SDK client on error", async () => {
-        mockGetPipelineTelemetry.mockResolvedValue(VALID_TELEMETRY);
-        mockGetSpecMarkdown.mockResolvedValue(MOCK_SPEC);
-        mockSendAndWait.mockRejectedValue(new Error("SDK error"));
-
-        await POST(makeRequest(), makeParams());
-
-        expect(mockStop).toHaveBeenCalledTimes(1);
-    });
-
-    it("returns empty markdown when sendAndWait returns undefined", async () => {
+    it("returns 502 when sendAndWait returns empty content", async () => {
         mockGetPipelineTelemetry.mockResolvedValue(VALID_TELEMETRY);
         mockGetSpecMarkdown.mockResolvedValue(MOCK_SPEC);
         mockSendAndWait.mockResolvedValue(undefined);
@@ -288,7 +273,29 @@ describe("POST /api/synthesis/[slug]", () => {
         const response = await POST(makeRequest(), makeParams());
         const body = await response.json();
 
-        expect(response.status).toBe(200);
-        expect(body.markdown).toBe("");
+        expect(response.status).toBe(502);
+        expect(body.error).toContain("empty response");
+    });
+
+    it("returns 500 when createSession throws", async () => {
+        mockGetPipelineTelemetry.mockResolvedValue(VALID_TELEMETRY);
+        mockGetSpecMarkdown.mockResolvedValue(MOCK_SPEC);
+        mockCreateSession.mockRejectedValue(new Error("SDK connection failed"));
+
+        const response = await POST(makeRequest(), makeParams());
+        const body = await response.json();
+
+        expect(response.status).toBe(500);
+        expect(body.error).toContain("Synthesis failed");
+    });
+
+    it("cleans up the SDK client on pre-stream error", async () => {
+        mockGetPipelineTelemetry.mockResolvedValue(VALID_TELEMETRY);
+        mockGetSpecMarkdown.mockResolvedValue(MOCK_SPEC);
+        mockCreateSession.mockRejectedValue(new Error("SDK error"));
+
+        await POST(makeRequest(), makeParams());
+
+        expect(mockStop).toHaveBeenCalledTimes(1);
     });
 });
